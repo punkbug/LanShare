@@ -1,0 +1,47 @@
+# macOS and editor files
+.DS_Store
+.AppleDouble
+.LSOverride
+*.swp
+*.swo
+.idea/
+.vscode/
+
+# Swift Package Manager and generated macOS app bundles
+.build/
+.swiftpm/
+dist/
+
+# Android / Gradle build outputs and local configuration
+Android/.gradle/
+Android/.gradle-user-home/
+Android/**/build/
+Android/local.properties
+local.properties
+*.apk
+*.aab
+*.idsig
+
+# Xcode derived data and archives
+DerivedData/
+**/DerivedData/
+*.xcarchive/
+*.ipa
+*.dSYM/
+
+# Windows build outputs
+Windows/**/bin/
+Windows/**/obj/
+*.exe
+*.msi
+
+# Signing material, credentials, and local environment files
+*.keystore
+*.jks
+*.p12
+*.mobileprovision
+*.provisionprofile
+.env
+.env.*
+!.env.example
+secrets/
