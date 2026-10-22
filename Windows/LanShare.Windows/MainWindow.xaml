@@ -15,7 +15,15 @@
                 <StackPanel DockPanel.Dock="Top">
                     <TextBlock Text="⇅  LanShare" FontSize="26" FontWeight="Bold" Foreground="#182740" />
                     <TextBlock Text="같은 네트워크에서 바로 전송" Margin="0,4,0,18" Foreground="#68758B" />
-                    <Button Content="🌐 4자리 코드 / QR로 전송" Margin="0,0,0,14" Padding="10,8" Click="WebTransfer_Click" />
+                    <Border Background="#F1F5FF" CornerRadius="10" Padding="12" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="내 연결 코드" Foreground="#68758B" FontSize="12" />
+                            <TextBlock x:Name="LocalCodeText" FontSize="30" FontWeight="Bold" Foreground="#2457D6" />
+                            <TextBlock Text="같은 로컬 네트워크에서만 연결됩니다." Foreground="#68758B" FontSize="11" Margin="0,2,0,8" />
+                            <TextBox x:Name="CodeInput" MaxLength="4" FontSize="16" Padding="6" ToolTip="상대방의 4자리 코드" />
+                            <Button Content="코드 연결" Margin="0,6,0,0" Padding="8,6" Click="ConnectByCode_Click" />
+                        </StackPanel>
+                    </Border>
                     <DockPanel Margin="0,0,0,10">
                         <TextBlock Text="주변 기기" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <Button Content="새로고침" DockPanel.Dock="Right" Padding="10,5" Click="Refresh_Click" />
@@ -29,7 +37,7 @@
                             <Border Padding="10" Margin="0,2" CornerRadius="8" Background="#F1F4FA">
                                 <StackPanel>
                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" Foreground="#182740" />
-                                    <TextBlock Text="{Binding Address}" FontSize="11" Foreground="#68758B" />
+                                    <TextBlock Text="{Binding Code}" FontSize="12" Foreground="#2457D6" />
                                 </StackPanel>
                             </Border>
                         </DataTemplate>
@@ -41,7 +49,7 @@
         <Border Grid.Column="2" Background="White" CornerRadius="16" Padding="28">
             <StackPanel>
                 <TextBlock Text="파일 보내기" FontSize="26" FontWeight="Bold" Foreground="#182740" />
-                <TextBlock Text="전송은 같은 로컬 네트워크에서 기기끼리 직접 이뤄집니다." Margin="0,8,0,22"
+                <TextBlock Text="전송은 외부 웹이나 서버를 거치지 않고, 같은 로컬 네트워크에서 기기끼리 직접 이뤄집니다." Margin="0,8,0,22"
                            Foreground="#68758B" TextWrapping="Wrap" />
                 <Button x:Name="ChooseButton" Height="170" Click="ChooseFile_Click" Background="#F7F9FD"
                         BorderBrush="#CBD4E2" BorderThickness="1" AllowDrop="True" Drop="FileDrop_Drop" DragOver="FileDrop_DragOver">

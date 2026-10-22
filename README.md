@@ -27,7 +27,7 @@ bash scripts/build-app.sh
 open dist/LanShare.app
 ```
 
-최초 실행 시 로컬 네트워크 접근을 허용해야 합니다. 두 Mac에서 앱을 실행하면 Bonjour로 서로를 검색합니다. 수신 파일은 다운로드 폴더에 저장됩니다.
+최초 실행 시 로컬 네트워크 접근을 허용해야 합니다. 두 앱을 같은 로컬 네트워크에서 실행한 뒤, 수신 기기에 표시된 4자리 코드를 송신 기기에 입력하세요. 앱은 Bonjour로 코드를 찾고 파일을 LAN에서 직접 전송합니다.
 
 > 현재 전송 프로토콜은 개발용 초안이며 암호화되어 있지 않습니다. 신뢰하는 개인 네트워크에서만 사용하고, 민감한 파일 전송이나 외부 배포에는 사용하지 마세요. 자세한 내용은 [프로토콜 초안](docs/PROTOCOL.md)을 참고하세요.
 
@@ -40,7 +40,7 @@ open dist/LanShare.app
 | iOS/iPadOS | `iOS/LanShareIOS.xcodeproj` | 개발용 앱, 전송 중 앱을 열어 둬야 함 |
 | Windows | `Windows/LanShare.Windows/` | .NET 8 WPF 앱, Windows에서 빌드 필요 |
 
-macOS, Android, iOS/iPadOS, Windows 앱의 **4자리 코드 / QR로 전송** 메뉴는 운영 웹사이트의 동일한 PeerJS/WebRTC 화면을 앱 안에서 엽니다. 앱과 브라우저가 같은 코드·QR 방식으로 연결되며, 웹 화면으로 받은 파일은 각 플랫폼의 LanShare 폴더에 저장됩니다.
+각 앱은 실행할 때 4자리 LAN 연결 코드를 표시합니다. 상대 기기에서 코드를 입력하면 Bonjour/mDNS로 발견된 해당 기기에 기존 TCP 프로토콜로 직접 연결합니다. 앱 간 파일 데이터는 웹페이지, 인터넷 서버 또는 클라우드를 거치지 않습니다.
 
 ## 제품 원칙
 

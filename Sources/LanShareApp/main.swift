@@ -3,7 +3,6 @@ import Darwin
 import Network
 import SwiftUI
 import UniformTypeIdentifiers
-import WebKit
 
 @main
 struct LanShareApp: App {
@@ -21,6 +20,7 @@ struct LanShareApp: App {
 
 struct Peer: Identifiable, Hashable {
     let id: String
+    let code: String
     let name: String
     let endpoint: NWEndpoint
 }
@@ -45,16 +45,21 @@ final class LanShareModel: ObservableObject {
     @Published var transferDetails = ""
     @Published var isTransferring = false
 
-    @Published var showWebTransferSheet = false
+    @Published var codeEntry = ""
 
     private let service = LanService()
+    var localCode: String { service.localCode }
     private var transferStartedAt = ProcessInfo.processInfo.systemUptime
 
     init() {
         service.onPeers = { [weak self] peers in
             Task { @MainActor in
                 self?.peers = peers
-                self?.status = peers.isEmpty ? "같은 네트워크의 LanShare 기기를 기다리는 중" : "\(peers.count)대의 기기를 찾았습니다"
+                if let self, self.codeEntry.count == 4, peers.contains(where: { $0.code == self.codeEntry }) {
+                    self.connectByCode()
+                } else {
+                    self?.status = peers.isEmpty ? "같은 네트워크의 기기 코드를 찾는 중" : "\(peers.count)대의 같은 네트워크 기기를 찾았습니다"
+                }
             }
         }
         service.onIncoming = { [weak self] sender, name, size, respond in
@@ -156,6 +161,25 @@ final class LanShareModel: ObservableObject {
         status = "주변 기기를 다시 찾는 중입니다…"
         service.refreshPeers()
     }
+
+    func connectByCode() {
+        let code = codeEntry.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard code.count == 4, code.allSatisfy(\.isNumber) else {
+            status = "상대방의 4자리 코드를 입력하세요"
+            selectedPeerID = nil
+            return
+        }
+        let matches = peers.filter { $0.code == code }
+        guard matches.count == 1, let peer = matches.first else {
+            selectedPeerID = nil
+            status = matches.isEmpty
+                ? "코드 \(code) 기기를 찾지 못했습니다. 같은 네트워크인지 확인하세요."
+                : "같은 코드 기기가 여러 대입니다. 앱을 다시 열어 새 코드를 발급하세요."
+            return
+        }
+        selectedPeerID = peer.id
+        status = "코드 \(code) 기기에 연결했습니다. 파일을 선택해 보내세요."
+    }
 }
 
 struct ContentView: View {
@@ -163,7 +187,7 @@ struct ContentView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            // Left Sidebar: Peers List & Web Share Button
+            // Left Sidebar: Local code and discovered peers
             VStack(alignment: .leading, spacing: 20) {
                 HStack(spacing: 12) {
                     Image(systemName: "arrow.up.arrow.down.circle.fill")
@@ -174,32 +198,20 @@ struct ContentView: View {
                     }
                 }
 
-                // Web Browser Direct Transfer Action Banner
-                Button(action: {
-                    model.showWebTransferSheet = true
-                }) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "qrcode.viewfinder")
-                            .font(.system(size: 20))
-                            .foregroundStyle(.white)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("4자리 코드 / QR로 전송")
-                                .font(.subheadline.bold())
-                                .foregroundStyle(.white)
-                            Text("웹과 같은 보안 코드로 연결")
-                                .font(.caption2)
-                                .foregroundStyle(.white.opacity(0.85))
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("내 연결 코드").font(.caption).foregroundStyle(.secondary)
+                    Text(model.localCode).font(.system(size: 34, weight: .bold, design: .rounded)).foregroundStyle(.blue)
+                    TextField("상대방 4자리 코드", text: $model.codeEntry)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: model.codeEntry) { value in
+                            let digits = String(value.filter(\.isNumber).prefix(4))
+                            if digits != value { model.codeEntry = digits }
                         }
-                    }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(
-                        LinearGradient(colors: [.blue, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing),
-                        in: RoundedRectangle(cornerRadius: 12)
-                    )
+                        .onSubmit { model.connectByCode() }
+                    Button("코드 연결", action: model.connectByCode)
+                        .buttonStyle(.borderedProminent)
+                    Text("같은 Wi-Fi 또는 로컬 네트워크에서만 연결됩니다.").font(.caption2).foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
-                .help("웹과 같은 4자리 코드 또는 QR로 파일을 주고받습니다")
 
                 Divider()
 
@@ -217,7 +229,7 @@ struct ContentView: View {
                     VStack(spacing: 10) {
                         Image(systemName: "wifi.slash").font(.system(size: 28)).foregroundStyle(.secondary)
                         Text("주변 기기 찾는 중").font(.subheadline.bold())
-                        Text("상대 기기에서 LanShare를 켜거나,\n상단 [4자리 코드 / QR로 전송]을 이용하세요.")
+                        Text("상대 기기에서 LanShare를 열고 표시된 4자리 코드를 입력하세요.")
                             .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -255,7 +267,7 @@ struct ContentView: View {
                             Text(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file))
                                 .font(.caption).foregroundStyle(.secondary)
                         } else {
-                            Text("웹 연결 화면에서 파일을 보내고 받을 수 있습니다")
+                            Text("같은 네트워크의 LanShare 기기에 직접 전송합니다")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }
@@ -300,13 +312,6 @@ struct ContentView: View {
                     .buttonStyle(.borderedProminent)
                     .disabled(model.selectedFile == nil || model.selectedPeerID == nil || model.isTransferring)
 
-                    Button(action: {
-                        model.showWebTransferSheet = true
-                    }) {
-                        Label("4자리 코드 / QR로 전송", systemImage: "qrcode")
-                            .padding(.vertical, 6)
-                    }
-                    .buttonStyle(.bordered)
                 }
             }
             .padding(30)
@@ -320,83 +325,6 @@ struct ContentView: View {
                 primaryButton: .default(Text("받기")) { model.respondToIncoming(true) },
                 secondaryButton: .cancel(Text("거절")) { model.respondToIncoming(false) }
             )
-        }
-        .sheet(isPresented: $model.showWebTransferSheet) {
-            WebTransferSheetView(onDismiss: { model.showWebTransferSheet = false })
-        }
-    }
-}
-
-private struct WebTransferSheetView: View {
-    let onDismiss: () -> Void
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("4자리 코드 / QR로 전송").font(.title3.bold())
-                Spacer()
-                Button("닫기", action: onDismiss).buttonStyle(.borderless)
-            }
-            WebTransferView().frame(minWidth: 900, minHeight: 650)
-        }
-        .padding(12)
-        .frame(minWidth: 930, minHeight: 710)
-    }
-}
-
-private struct WebTransferView: NSViewRepresentable {
-    func makeCoordinator() -> Coordinator { Coordinator() }
-
-    func makeNSView(context: Context) -> WKWebView {
-        let controller = WKUserContentController()
-        controller.add(context.coordinator, name: "lanShareNative")
-        controller.addUserScript(WKUserScript(source: Self.bridgeScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
-        let configuration = WKWebViewConfiguration()
-        configuration.userContentController = controller
-        let view = WKWebView(frame: .zero, configuration: configuration)
-        view.load(URLRequest(url: URL(string: "https://lanshare-five.vercel.app/#web-direct-transfer")!))
-        return view
-    }
-
-    func updateNSView(_ nsView: WKWebView, context: Context) {}
-
-    private static let bridgeScript = """
-    window.lanShareNative={beginFile:(name,mime,size)=>webkit.messageHandlers.lanShareNative.postMessage({type:'begin',name,mime,size}),writeChunk:data=>webkit.messageHandlers.lanShareNative.postMessage({type:'chunk',data}),completeFile:()=>webkit.messageHandlers.lanShareNative.postMessage({type:'complete'})};
-    """
-
-    final class Coordinator: NSObject, WKScriptMessageHandler {
-        private let queue = DispatchQueue(label: "app.lanshare.web-download")
-        private var destination: URL?
-        private var output: FileHandle?
-        deinit {
-            output?.closeFile()
-            if let destination { try? FileManager.default.removeItem(at: destination) }
-        }
-
-        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-            guard let data = message.body as? [String: Any], let type = data["type"] as? String else { return }
-            queue.async { [weak self] in self?.handle(data: data, type: type) }
-        }
-
-        private func handle(data: [String: Any], type: String) {
-            switch type {
-            case "begin":
-                guard let name = data["name"] as? String, let safe = LanService.safeFileName(name) else { return }
-                let folder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0].appendingPathComponent("LanShare", isDirectory: true)
-                try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                guard let (url, handle) = LanService.createSafeDestination(directory: folder, name: safe) else { return }
-                destination = url
-                output = handle
-            case "chunk":
-                guard let encoded = data["data"] as? String, let bytes = Data(base64Encoded: encoded) else { return }
-                output?.write(bytes)
-            case "complete":
-                output?.closeFile()
-                output = nil
-                destination = nil
-                DispatchQueue.main.async { NSSound.beep() }
-            default: break
-            }
         }
     }
 }
@@ -412,6 +340,8 @@ private struct TransferRequest: Codable {
 final class LanService {
     private let queue = DispatchQueue(label: "app.lanshare.network", qos: .userInitiated)
     private let deviceName = Host.current().localizedName ?? "Mac"
+    let localCode = String(Int.random(in: 1000...9999))
+    private var serviceName: String { "LanShare-\(localCode)" }
     private var listener: NWListener?
     private var browser: NWBrowser?
     private var connections: [NWConnection] = []
@@ -425,7 +355,7 @@ final class LanService {
     func start() {
         do {
             let listener = try NWListener(using: .tcp)
-            listener.service = NWListener.Service(name: deviceName, type: "_lanshare._tcp")
+            listener.service = NWListener.Service(name: serviceName, type: "_lanshare._tcp")
             listener.newConnectionHandler = { [weak self] connection in self?.accept(connection) }
             listener.stateUpdateHandler = { [weak self] state in
                 if case .failed = state { self?.onFailure?("네트워크 수신을 시작하지 못했습니다") }
@@ -460,8 +390,11 @@ final class LanService {
         browser.browseResultsChangedHandler = { [weak self] results, _ in
             let peers = results.compactMap { result -> Peer? in
                 guard case let .service(name, _, _, _) = result.endpoint,
-                      name != self?.deviceName else { return nil }
-                return Peer(id: name, name: name, endpoint: result.endpoint)
+                      name != self?.serviceName,
+                      name.hasPrefix("LanShare-") else { return nil }
+                let code = String(name.dropFirst("LanShare-".count))
+                guard code.count == 4, code.allSatisfy(\.isNumber) else { return nil }
+                return Peer(id: name, code: code, name: "LanShare · 코드 \(code)", endpoint: result.endpoint)
             }
             self?.onPeers?(peers)
         }

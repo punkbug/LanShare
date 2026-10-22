@@ -3,7 +3,6 @@ package app.lanshare.android
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
-import android.app.Dialog
 import android.content.ContentValues
 import android.content.Intent
 import android.net.Uri
@@ -17,12 +16,11 @@ import android.os.SystemClock
 import android.provider.MediaStore
 import android.provider.Settings
 import android.view.Gravity
+import android.text.InputFilter
+import android.text.InputType
 import android.view.View
-import android.webkit.JavascriptInterface
-import android.webkit.WebChromeClient
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.ScrollView
@@ -36,7 +34,6 @@ import java.io.InputStreamReader
 import java.net.ServerSocket
 import java.net.Socket
 import java.io.OutputStream
-import android.util.Base64
 import java.nio.charset.StandardCharsets
 import java.text.DecimalFormat
 import java.util.Locale
@@ -48,10 +45,8 @@ import kotlin.math.max
 
 private const val SERVICE_TYPE = "_lanshare._tcp."
 private const val PICK_FILE = 1001
-private const val PICK_WEB_FILE = 1002
-private const val WEB_TRANSFER_URL = "https://lanshare-five.vercel.app/#web-direct-transfer"
 
-private data class Peer(val name: String, val host: String, val port: Int)
+private data class Peer(val code: String, val host: String, val port: Int)
 
 class MainActivity : Activity() {
     private val executor = Executors.newCachedThreadPool()
@@ -62,6 +57,8 @@ class MainActivity : Activity() {
     private lateinit var transferText: TextView
     private lateinit var transferDetails: TextView
     private lateinit var progressBar: ProgressBar
+    private lateinit var codeInput: EditText
+    private lateinit var sendButton: Button
     private lateinit var nsd: NsdManager
     private lateinit var wifiLock: WifiManager.MulticastLock
     private var discoveryListener: NsdManager.DiscoveryListener? = null
@@ -72,12 +69,10 @@ class MainActivity : Activity() {
     private var chosenSize: Long = 0
     @Volatile private var activeSocket: Socket? = null
     private var transferInProgress = false
-    private var webFileCallback: android.webkit.ValueCallback<Array<Uri>>? = null
-    private var webDownloadUri: Uri? = null
-    private var webDownloadOutput: OutputStream? = null
-    private var webDownloadName: String? = null
-    private val webDownloadLock = Any()
-    private val serviceName: String by lazy { readDeviceName() }
+    private var selectedPeer: Peer? = null
+    private val localCode = (1000..9999).random().toString()
+    private val serviceName: String by lazy { "LanShare-$localCode" }
+    private val deviceName: String by lazy { readDeviceName() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -101,13 +96,33 @@ class MainActivity : Activity() {
             root.addView(it, margin(bottom = 14))
         }
 
-        val webTransferBtn = Button(this).apply {
-            text = "🌐 4자리 코드 / QR로 전송"
-            setBackgroundColor(Color.rgb(41, 98, 255))
-            setTextColor(Color.WHITE)
-            setOnClickListener { showWebTransferDialog() }
+        val codeCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            background = rounded(Color.WHITE, 14)
+            addView(text("내 연결 코드", 13, Color.rgb(100, 111, 130)))
+            addView(text(localCode, 34, Color.rgb(41, 98, 255), true), margin(top = 2))
+            addView(text("같은 네트워크의 상대방이 이 코드를 입력하면 연결됩니다.", 12, Color.rgb(100, 111, 130)), margin(top = 3))
         }
-        root.addView(webTransferBtn, margin(bottom = 16))
+        root.addView(codeCard, margin(bottom = 14))
+
+        text("상대방 코드 입력", 16, Color.rgb(24, 39, 64), true).also { root.addView(it) }
+        val codeRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
+        codeInput = EditText(this).apply {
+            hint = "4자리 코드"
+            inputType = InputType.TYPE_CLASS_NUMBER
+            filters = arrayOf(InputFilter.LengthFilter(4))
+            textSize = 20f
+            gravity = Gravity.CENTER
+        }
+        codeRow.addView(codeInput, LinearLayout.LayoutParams(0, dp(52), 1f).apply { rightMargin = dp(8) })
+        codeRow.addView(Button(this).apply {
+            text = "코드 연결"
+            setOnClickListener { connectByCode() }
+        }, LinearLayout.LayoutParams(dp(120), dp(52)))
+        root.addView(codeRow, margin(top = 4, bottom = 8))
+        text("두 기기가 같은 Wi-Fi 또는 로컬 네트워크에 연결되어 있어야 합니다.", 12, Color.rgb(100, 111, 130))
+            .also { root.addView(it, margin(bottom = 14)) }
 
         val warning = text("개발용 초안 · 전송 암호화가 적용되지 않았습니다. 신뢰하는 네트워크에서만 사용하세요.", 13, Color.rgb(130, 79, 0))
         warning.setPadding(dp(14), dp(12), dp(14), dp(12))
@@ -144,6 +159,12 @@ class MainActivity : Activity() {
             }
         }
         root.addView(choose, matchWidth())
+        sendButton = Button(this).apply {
+            text = "코드 연결 후 파일 보내기"
+            isEnabled = false
+            setOnClickListener { selectedPeer?.let(::sendFile) }
+        }
+        root.addView(sendButton, margin(top = 8))
         transferText = text("선택한 파일 없음", 14, Color.rgb(67, 78, 97))
         root.addView(transferText, margin(top = 10))
         transferDetails = text("", 12, Color.rgb(100, 111, 130))
@@ -171,116 +192,12 @@ class MainActivity : Activity() {
         startDiscovery()
     }
 
-    private fun showWebTransferDialog() {
-        val pageStatus = TextView(this).apply {
-            text = "전송 화면을 불러오는 중…"
-            textSize = 14f
-            setTextColor(Color.rgb(70, 80, 100))
-            gravity = Gravity.CENTER
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-        }
-        val webView = WebView(this).apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-            settings.mediaPlaybackRequiresUserGesture = false
-            addJavascriptInterface(NativeDownloadBridge(), "lanShareNative")
-            setBackgroundColor(Color.WHITE)
-            webViewClient = object : WebViewClient() {
-                override fun onPageFinished(view: WebView, url: String) {
-                    pageStatus.visibility = View.GONE
-                }
-
-                override fun onReceivedError(
-                    view: WebView,
-                    request: android.webkit.WebResourceRequest,
-                    error: android.webkit.WebResourceError
-                ) {
-                    if (request.isForMainFrame) {
-                        pageStatus.text = "웹 전송 화면을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 열어주세요."
-                        pageStatus.visibility = View.VISIBLE
-                    }
-                }
-            }
-            webChromeClient = object : WebChromeClient() {
-                override fun onShowFileChooser(view: WebView, callback: android.webkit.ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
-                    webFileCallback?.onReceiveValue(null)
-                    webFileCallback = callback
-                    return try {
-                        startActivityForResult(params.createIntent(), PICK_WEB_FILE)
-                        true
-                    } catch (_: Exception) {
-                        webFileCallback?.onReceiveValue(null)
-                        webFileCallback = null
-                        false
-                    }
-                }
-            }
-            loadUrl(WEB_TRANSFER_URL)
-        }
-        val layout = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(Button(this@MainActivity).apply {
-                text = "닫기"
-                setOnClickListener { webFileCallback?.onReceiveValue(null); webFileCallback = null; webDialog?.dismiss() }
-            }, matchWidth())
-            addView(pageStatus, matchWidth())
-            addView(webView, LinearLayout.LayoutParams(matchWidth().width, 0, 1f))
-        }
-        webDialog = Dialog(this).apply {
-            setContentView(layout)
-            setOnDismissListener { webView.destroy(); webDialog = null }
-            show()
-            window?.setLayout(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT)
-        }
-        webView.post { webView.loadUrl(WEB_TRANSFER_URL) }
-    }
-
-    private var webDialog: Dialog? = null
-
-    private inner class NativeDownloadBridge {
-        @JavascriptInterface fun beginFile(name: String, mime: String, size: Long) = synchronized(webDownloadLock) {
-            runCatching {
-                webDownloadOutput?.close()
-                webDownloadUri?.let { contentResolver.delete(it, null, null) }
-                val safe = safeName(name) ?: "received-file"
-                val values = ContentValues().apply {
-                    put(MediaStore.Downloads.DISPLAY_NAME, uniqueDisplayName(safe))
-                    put(MediaStore.Downloads.MIME_TYPE, mime.ifBlank { "application/octet-stream" })
-                    put(MediaStore.Downloads.RELATIVE_PATH, "Download/LanShare")
-                    put(MediaStore.Downloads.IS_PENDING, 1)
-                }
-                val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: error("파일을 만들 수 없습니다")
-                webDownloadUri = uri
-                webDownloadName = safe
-                webDownloadOutput = contentResolver.openOutputStream(uri, "w") ?: error("파일을 열 수 없습니다")
-            }.onFailure { runOnUiThread { statusText.text = "웹 파일 저장 오류: ${it.localizedMessage}" } }
-        }
-
-        @JavascriptInterface fun writeChunk(encoded: String) = synchronized(webDownloadLock) {
-            runCatching { webDownloadOutput?.write(Base64.decode(encoded, Base64.DEFAULT)) ?: error("저장 파일이 준비되지 않았습니다") }
-                .onFailure { runOnUiThread { statusText.text = "웹 파일 저장 오류: ${it.localizedMessage}" } }
-        }
-
-        @JavascriptInterface fun completeFile() = synchronized(webDownloadLock) {
-            runCatching {
-                webDownloadOutput?.close()
-                val uri = webDownloadUri ?: error("저장된 파일이 없습니다")
-                val published = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
-                contentResolver.update(uri, published, null, null)
-                val name = webDownloadName ?: "파일"
-                runOnUiThread { statusText.text = "웹에서 파일을 받았습니다 · $name" }
-                webDownloadUri = null
-                webDownloadOutput = null
-            }.onFailure { runOnUiThread { statusText.text = "웹 파일 저장 오류: ${it.localizedMessage}" } }
-        }
-    }
-
     private fun startServer() {
         executor.execute {
             try {
                 val socketServer = ServerSocket(0)
                 serverSocket = socketServer
-                runOnUiThread { statusText.text = "주변 LanShare 기기를 검색 중입니다" }
+                runOnUiThread { statusText.text = "같은 네트워크의 기기 코드를 검색 중입니다" }
                 while (!socketServer.isClosed) {
                     val socket = socketServer.accept()
                     executor.execute { handleIncoming(socket) }
@@ -305,7 +222,7 @@ class MainActivity : Activity() {
                     nsd.registerService(info, NsdManager.PROTOCOL_DNS_SD, object : NsdManager.RegistrationListener {
                         override fun onServiceRegistered(service: NsdServiceInfo) {
                             registrationListener = this
-                            statusText.text = "주변 기기에 표시 중 · ${service.serviceName}"
+                            statusText.text = "내 코드 ${localCode}를 주변 기기에 알렸습니다"
                         }
                         override fun onRegistrationFailed(service: NsdServiceInfo, errorCode: Int) {
                             statusText.text = "주변 기기에 표시하지 못했습니다 ($errorCode)"
@@ -321,18 +238,24 @@ class MainActivity : Activity() {
     private fun startDiscovery() {
         val listener = object : NsdManager.DiscoveryListener {
             override fun onDiscoveryStarted(serviceType: String) {
-                runOnUiThread { statusText.text = "주변 LanShare 기기를 검색 중입니다" }
+                runOnUiThread { statusText.text = "같은 네트워크의 기기 코드를 검색 중입니다" }
             }
             override fun onServiceFound(service: NsdServiceInfo) {
                 if (service.serviceType.trimEnd('.') != SERVICE_TYPE.trimEnd('.') || service.serviceName == serviceName) return
+                val code = service.serviceName.removePrefix("LanShare-").takeIf { it.matches(Regex("\\d{4}")) } ?: return
                 try {
                     nsd.resolveService(service, object : NsdManager.ResolveListener {
                         override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) { }
                         override fun onServiceResolved(serviceInfo: NsdServiceInfo) {
                             val host = serviceInfo.host?.hostAddress ?: return
-                            val peer = Peer(serviceInfo.serviceName, host, serviceInfo.port)
-                            peers[peer.name] = peer
-                            runOnUiThread { renderPeers() }
+                            val resolvedCode = serviceInfo.serviceName.removePrefix("LanShare-").takeIf { it.matches(Regex("\\d{4}")) } ?: code
+                            if (resolvedCode == localCode) return
+                            val peer = Peer(resolvedCode, host, serviceInfo.port)
+                            peers[serviceInfo.serviceName] = peer
+                            runOnUiThread {
+                                if (codeInput.text.toString() == resolvedCode) connectByCode()
+                                else renderPeers()
+                            }
                         }
                     })
                 } catch (_: IllegalArgumentException) { }
@@ -356,35 +279,58 @@ class MainActivity : Activity() {
     private fun restartDiscovery() {
         discoveryListener?.let { try { nsd.stopServiceDiscovery(it) } catch (_: Exception) { } }
         peers.clear()
+        selectedPeer = null
         renderPeers()
         startDiscovery()
     }
 
+    private fun connectByCode() {
+        val code = codeInput.text.toString().trim()
+        if (!code.matches(Regex("\\d{4}"))) {
+            statusText.text = "상대방의 4자리 코드를 입력하세요"
+            selectedPeer = null
+            renderPeers()
+            return
+        }
+        val matches = peers.values.filter { it.code == code }
+        selectedPeer = when (matches.size) {
+            0 -> null
+            1 -> matches.first()
+            else -> null
+        }
+        statusText.text = when (matches.size) {
+            0 -> "코드 $code 기기를 찾지 못했습니다. 같은 네트워크인지 확인하고 새로고침하세요."
+            1 -> "코드 $code 기기에 연결했습니다. 파일을 선택해 보내세요."
+            else -> "같은 코드 기기가 여러 대입니다. 상대 기기에서 새 코드를 발급하세요."
+        }
+        renderPeers()
+    }
+
     private fun renderPeers() {
         peerList.removeAllViews()
-        val found = peers.values.sortedBy { it.name }
+        val found = peers.values.sortedBy { it.code }
         if (found.isEmpty()) {
-            peerList.addView(text("기기가 보이지 않으면 같은 Wi-Fi에 연결되어 있는지 확인하세요.", 13, Color.rgb(100, 111, 130)))
+            peerList.addView(text("기기 코드 검색 중… 상대방도 앱을 열고 같은 네트워크에 연결하세요.", 13, Color.rgb(100, 111, 130)))
+            sendButton.isEnabled = false
             return
         }
         found.forEach { peer ->
             val button = Button(this).apply {
-                text = "보내기 · ${peer.name}"
-                isEnabled = chosenUri != null && !transferInProgress
-                setOnClickListener { sendFile(peer) }
+                text = "LanShare · 코드 ${peer.code}"
+                isEnabled = !transferInProgress
+                setOnClickListener { codeInput.setText(peer.code); connectByCode() }
             }
             peerList.addView(button, margin(bottom = 8).also { it.width = matchWidth().width })
         }
-        statusText.text = "${found.size}대의 기기를 찾았습니다"
+        sendButton.isEnabled = chosenUri != null && selectedPeer != null && !transferInProgress
+    }
+
+    private fun updateSendButton() {
+        sendButton.isEnabled = chosenUri != null && selectedPeer != null && !transferInProgress
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == PICK_WEB_FILE) {
-            webFileCallback?.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data))
-            webFileCallback = null
-            return
-        }
         if (requestCode != PICK_FILE || resultCode != RESULT_OK) return
         val uri = data?.data ?: return
         val name = queryName(uri) ?: "파일"
@@ -405,8 +351,8 @@ class MainActivity : Activity() {
             return
         }
         ensureNotificationPermission()
-        startTransferKeepAlive("${peer.name}에 보내는 중")
-        setTransferState(true, "${peer.name}에 연결 중…", 0)
+        startTransferKeepAlive("코드 ${peer.code} 기기에 보내는 중")
+        setTransferState(true, "코드 ${peer.code} 기기에 연결 중…", 0)
         executor.execute {
             try {
                 val socket = Socket(peer.host, peer.port)
@@ -414,7 +360,7 @@ class MainActivity : Activity() {
                 socket.tcpNoDelay = true
                 val request = JSONObject().apply {
                     put("version", 1)
-                    put("sender", serviceName)
+                put("sender", deviceName)
                     put("fileName", name)
                     put("size", size)
                 }
@@ -670,11 +616,6 @@ class MainActivity : Activity() {
         try { wifiLock.takeIf { it.isHeld }?.release() } catch (_: Exception) { }
         try { activeSocket?.close() } catch (_: Exception) { }
         try { serverSocket?.close() } catch (_: Exception) { }
-        try { webDialog?.dismiss() } catch (_: Exception) { }
-        synchronized(webDownloadLock) {
-            try { webDownloadOutput?.close() } catch (_: Exception) { }
-            try { webDownloadUri?.let { contentResolver.delete(it, null, null) } } catch (_: Exception) { }
-        }
         executor.shutdownNow()
         super.onDestroy()
     }

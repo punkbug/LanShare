@@ -3,7 +3,6 @@ import Network
 import SwiftUI
 import UIKit
 import UniformTypeIdentifiers
-import WebKit
 
 private struct TransferRequest: Codable {
     let version: Int
@@ -14,6 +13,7 @@ private struct TransferRequest: Codable {
 
 private struct Peer: Identifiable, Hashable {
     let id: String
+    let code: String
     let name: String
     let endpoint: NWEndpoint
 }
@@ -38,16 +38,21 @@ private final class LanShareModel: ObservableObject {
     @Published var transferLabel = ""
     @Published var isTransferring = false
 
-    @Published var showWebTransferSheet = false
+    @Published var codeEntry = ""
 
     private let service = LanService()
+    var localCode: String { service.localCode }
     private var startedAt = ProcessInfo.processInfo.systemUptime
 
     init() {
         service.onPeers = { [weak self] peers in
             Task { @MainActor in
                 self?.peers = peers
-                self?.status = peers.isEmpty ? "같은 Wi-Fi의 LanShare 기기를 기다리는 중" : "\(peers.count)대의 기기를 찾았습니다"
+                if let self, self.codeEntry.count == 4, peers.contains(where: { $0.code == self.codeEntry }) {
+                    self.connectByCode()
+                } else {
+                    self?.status = peers.isEmpty ? "같은 네트워크의 기기 코드를 찾는 중" : "\(peers.count)대의 같은 네트워크 기기를 찾았습니다"
+                }
             }
         }
         service.onIncoming = { [weak self] request in Task { @MainActor in self?.incoming = request } }
@@ -65,6 +70,25 @@ private final class LanShareModel: ObservableObject {
         selectedPeerID = nil
         status = "주변 기기를 다시 찾는 중입니다…"
         service.refresh()
+    }
+
+    func connectByCode() {
+        let code = codeEntry.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard code.count == 4, code.allSatisfy(\.isNumber) else {
+            status = "상대방의 4자리 코드를 입력하세요"
+            selectedPeerID = nil
+            return
+        }
+        let matches = peers.filter { $0.code == code }
+        guard matches.count == 1, let peer = matches.first else {
+            selectedPeerID = nil
+            status = matches.isEmpty
+                ? "코드 \(code) 기기를 찾지 못했습니다. 같은 네트워크인지 확인하세요."
+                : "같은 코드 기기가 여러 대입니다. 앱을 다시 열어 새 코드를 발급하세요."
+            return
+        }
+        selectedPeerID = peer.id
+        status = "코드 \(code) 기기에 연결했습니다. 파일을 선택해 보내세요."
     }
 
     func sendSelectedFile() {
@@ -124,27 +148,19 @@ private struct ContentView: View {
         NavigationStack {
             List {
                 Section {
-                    Button {
-                        model.showWebTransferSheet = true
-                    } label: {
-                        HStack(spacing: 12) {
-                            Image(systemName: "qrcode.viewfinder")
-                                .font(.system(size: 26))
-                                .foregroundStyle(.blue)
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text("4자리 코드 / QR로 전송")
-                                    .font(.headline)
-                                    .foregroundStyle(.primary)
-                                Text("웹과 같은 보안 코드로 연결")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("내 연결 코드").font(.caption).foregroundStyle(.secondary)
+                        Text(model.localCode).font(.system(size: 34, weight: .bold, design: .rounded)).foregroundStyle(.blue)
+                        TextField("상대방 4자리 코드", text: $model.codeEntry)
+                            .keyboardType(.numberPad)
+                            .textFieldStyle(.roundedBorder)
+                            .onChange(of: model.codeEntry) { value in
+                                let digits = String(value.filter(\.isNumber).prefix(4))
+                                if digits != value { model.codeEntry = digits }
                             }
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption.bold())
-                                .foregroundStyle(.secondary)
-                        }
-                        .padding(.vertical, 4)
+                        Button("코드 연결", action: model.connectByCode)
+                            .buttonStyle(.borderedProminent)
+                        Text("같은 Wi-Fi 또는 로컬 네트워크에서만 연결됩니다.").font(.caption2).foregroundStyle(.secondary)
                     }
                 }
 
@@ -161,7 +177,7 @@ private struct ContentView: View {
 
                 Section("주변 기기 (Bonjour)") {
                     if model.peers.isEmpty {
-                        Text("상대 기기에서 LanShare를 열고 같은 Wi-Fi에 연결하세요.\n또는 상단의 [4자리 코드 / QR]을 이용하세요.")
+                        Text("상대 기기에서 LanShare를 열고 표시된 4자리 코드를 입력하세요.")
                             .font(.footnote).foregroundStyle(.secondary)
                     } else {
                         ForEach(model.peers) { peer in
@@ -208,73 +224,6 @@ private struct ContentView: View {
                 IncomingSheet(request: request, answer: model.answerIncoming)
                     .presentationDetents([.medium])
             }
-            .sheet(isPresented: $model.showWebTransferSheet) {
-                NavigationStack {
-                    WebTransferView { name in model.status = "웹에서 파일을 받았습니다 · \(name)" }
-                        .navigationTitle("4자리 코드 / QR로 전송")
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("닫기") { model.showWebTransferSheet = false } } }
-                }
-            }
-        }
-    }
-}
-
-private struct WebTransferView: UIViewRepresentable {
-    let onSaved: (String) -> Void
-    func makeCoordinator() -> Coordinator { Coordinator(onSaved: onSaved) }
-    func makeUIView(context: Context) -> WKWebView {
-        let controller = WKUserContentController()
-        controller.add(context.coordinator, name: "lanShareNative")
-        controller.addUserScript(WKUserScript(source: Self.bridgeScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
-        let configuration = WKWebViewConfiguration()
-        configuration.userContentController = controller
-        let webView = WKWebView(frame: .zero, configuration: configuration)
-        webView.load(URLRequest(url: URL(string: "https://lanshare-five.vercel.app/#web-direct-transfer")!))
-        return webView
-    }
-    func updateUIView(_ webView: WKWebView, context: Context) {}
-
-    private static let bridgeScript = """
-    window.lanShareNative={beginFile:(name,mime,size)=>webkit.messageHandlers.lanShareNative.postMessage({type:'begin',name,mime,size}),writeChunk:data=>webkit.messageHandlers.lanShareNative.postMessage({type:'chunk',data}),completeFile:()=>webkit.messageHandlers.lanShareNative.postMessage({type:'complete'})};
-    """
-
-    final class Coordinator: NSObject, WKScriptMessageHandler {
-        private let queue = DispatchQueue(label: "app.lanshare.ios.web-download")
-        private let onSaved: (String) -> Void
-        private var output: FileHandle?
-        private var destination: URL?
-        private var fileName: String?
-        init(onSaved: @escaping (String) -> Void) { self.onSaved = onSaved }
-        deinit {
-            output?.closeFile()
-            if let destination { try? FileManager.default.removeItem(at: destination) }
-        }
-        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
-            guard let data = message.body as? [String: Any], let type = data["type"] as? String else { return }
-            queue.async { [weak self] in self?.handle(data: data, type: type) }
-        }
-        private func handle(data: [String: Any], type: String) {
-            switch type {
-            case "begin":
-                guard let name = data["name"] as? String, let safe = LanService.safe(name),
-                      let url = LanService.saveURL(name: safe), let handle = try? FileHandle(forWritingTo: url) else { return }
-                output?.closeFile()
-                output = handle
-                destination = url
-                fileName = url.lastPathComponent
-            case "chunk":
-                guard let encoded = data["data"] as? String, let bytes = Data(base64Encoded: encoded) else { return }
-                output?.write(bytes)
-            case "complete":
-                output?.closeFile()
-                output = nil
-                destination = nil
-                let name = fileName ?? "파일"
-                fileName = nil
-                DispatchQueue.main.async { self.onSaved(name) }
-            default: break
-            }
         }
     }
 }
@@ -299,6 +248,8 @@ private struct IncomingSheet: View {
 private final class LanService {
     private let queue = DispatchQueue(label: "app.lanshare.ios.network", qos: .userInitiated)
     private let deviceName = UIDevice.current.name
+    let localCode = String(Int.random(in: 1000...9999))
+    private var serviceName: String { "LanShare-\(localCode)" }
     private var listener: NWListener?
     private var browser: NWBrowser?
     private var pending: [UUID: NWConnection] = [:]
@@ -312,7 +263,7 @@ private final class LanService {
     func start() {
         do {
             let listener = try NWListener(using: .tcp)
-            listener.service = NWListener.Service(name: deviceName, type: "_lanshare._tcp")
+            listener.service = NWListener.Service(name: serviceName, type: "_lanshare._tcp")
             listener.newConnectionHandler = { [weak self] connection in self?.accept(connection) }
             listener.stateUpdateHandler = { [weak self] state in
                 if case let .failed(error) = state { self?.onError?("수신 서버 오류: \(error.localizedDescription)") }
@@ -336,8 +287,12 @@ private final class LanService {
         browser.browseResultsChangedHandler = { [weak self] results, _ in
             guard let self else { return }
             let peers = results.compactMap { result -> Peer? in
-                guard case let .service(name, _, _, _) = result.endpoint, name != self.deviceName else { return nil }
-                return Peer(id: name, name: name, endpoint: result.endpoint)
+                guard case let .service(name, _, _, _) = result.endpoint,
+                      name != self.serviceName,
+                      name.hasPrefix("LanShare-") else { return nil }
+                let code = String(name.dropFirst("LanShare-".count))
+                guard code.count == 4, code.allSatisfy(\.isNumber) else { return nil }
+                return Peer(id: name, code: code, name: "LanShare · 코드 \(code)", endpoint: result.endpoint)
             }
             self.onPeers?(peers)
         }

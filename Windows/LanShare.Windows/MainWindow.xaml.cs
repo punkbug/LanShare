@@ -16,6 +16,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        LocalCodeText.Text = _service.LocalCode;
         PeersList.ItemsSource = _peers;
         _service.PeersChanged += peers => Dispatcher.Invoke(() =>
         {
@@ -23,8 +24,10 @@ public partial class MainWindow : Window
             _peers.Clear();
             foreach (var peer in peers) _peers.Add(peer);
             if (selectedId is not null) PeersList.SelectedItem = _peers.FirstOrDefault(peer => peer.Id == selectedId);
-            StatusText.Text = peers.Count == 0 ? "같은 Wi-Fi의 LanShare 기기를 기다리는 중" : $"{peers.Count}대의 기기를 찾았습니다";
-            UpdateSendEnabled();
+            StatusText.Text = peers.Count == 0 ? "같은 네트워크의 기기 코드를 찾는 중" : $"{peers.Count}대의 같은 네트워크 기기를 찾았습니다";
+            if (CodeInput.Text.Trim().Length == 4 && _peers.Any(peer => peer.Code == CodeInput.Text.Trim()))
+                ConnectByCode_Click(this, new RoutedEventArgs());
+            else UpdateSendEnabled();
         });
         _service.StatusChanged += message => Dispatcher.Invoke(() => StatusText.Text = message);
         _service.IncomingRequest += request => Dispatcher.Invoke(() =>
@@ -68,7 +71,27 @@ public partial class MainWindow : Window
     }
 
     private void Refresh_Click(object sender, RoutedEventArgs e) => _service.Refresh();
-    private void WebTransfer_Click(object sender, RoutedEventArgs e) => new WebTransferWindow { Owner = this }.ShowDialog();
+    private void ConnectByCode_Click(object sender, RoutedEventArgs e)
+    {
+        var code = CodeInput.Text.Trim();
+        if (code.Length != 4 || !code.All(char.IsAsciiDigit))
+        {
+            StatusText.Text = "상대방의 4자리 코드를 입력하세요.";
+            PeersList.SelectedItem = null;
+            return;
+        }
+        var matches = _peers.Where(peer => peer.Code == code).ToArray();
+        if (matches.Length != 1)
+        {
+            StatusText.Text = matches.Length == 0
+                ? $"코드 {code} 기기를 찾지 못했습니다. 같은 네트워크인지 확인하세요."
+                : "같은 코드 기기가 여러 대입니다. 상대 앱을 다시 열어 새 코드를 발급하세요.";
+            PeersList.SelectedItem = null;
+            return;
+        }
+        PeersList.SelectedItem = matches[0];
+        StatusText.Text = $"코드 {code} 기기에 연결했습니다. 파일을 선택해 보내세요.";
+    }
     private void PeersList_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateSendEnabled();
 
     private void ChooseFile_Click(object sender, RoutedEventArgs e)

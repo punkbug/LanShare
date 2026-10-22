@@ -5,10 +5,11 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using System.Security.Cryptography;
 
 namespace LanShare.Windows;
 
-internal sealed record Peer(string Id, string Name, IPAddress Address, int Port);
+internal sealed record Peer(string Id, string Name, string Code, IPAddress Address, int Port);
 internal sealed record TransferPrompt(string Sender, string FileName, long Size, Action<bool> Respond);
 internal sealed record TransferProgress(string Label, long Bytes, long Total);
 internal sealed record TransferRequest(int Version, string Sender, string FileName, long Size);
@@ -19,6 +20,8 @@ internal sealed class LanShareService : IDisposable
     private const string MulticastGroup = "224.0.0.251";
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
     private readonly string _deviceName = Environment.MachineName;
+    private readonly string _localCode = RandomNumberGenerator.GetInt32(1000, 10000).ToString();
+    public string LocalCode => _localCode;
     private readonly CancellationTokenSource _lifetime = new();
     private readonly ConcurrentDictionary<string, (string Host, int Port, DateTime Seen)> _services = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, IPAddress> _addresses = new(StringComparer.OrdinalIgnoreCase);
@@ -172,8 +175,10 @@ internal sealed class LanShareService : IDisposable
             var value = item.Value;
             if (value.Port == 0 || value.Host.Length == 0 || !_addresses.TryGetValue(value.Host, out var address)) return null;
             var name = instance.EndsWith(suffix, StringComparison.OrdinalIgnoreCase) ? instance[..^suffix.Length] : instance;
-            if (name.Equals(SanitizeInstance(_deviceName), StringComparison.OrdinalIgnoreCase)) return null;
-            return new Peer(instance, name, address, value.Port);
+            if (!name.StartsWith("LanShare-", StringComparison.Ordinal)) return null;
+            var code = name["LanShare-".Length..];
+            if (code.Length != 4 || !code.All(char.IsAsciiDigit) || code == _localCode) return null;
+            return new Peer(instance, $"LanShare · 코드 {code}", code, address, value.Port);
         }).Where(x => x is not null).Cast<Peer>().ToArray();
         PeersChanged?.Invoke(peers);
     }
@@ -192,7 +197,7 @@ internal sealed class LanShareService : IDisposable
     {
         var hostAddress = GetLocalAddress();
         var hostName = (Environment.MachineName.Replace('.', '-') + ".local").Trim('.');
-        var instance = SanitizeInstance(_deviceName) + "." + ServiceType;
+        var instance = "LanShare-" + _localCode + "." + ServiceType;
         using var stream = new MemoryStream();
         WriteHeader(stream, 0x8400, 4);
         WriteRecord(stream, ServiceType, 12, body => WriteDnsName(body, instance));

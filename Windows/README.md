@@ -1,6 +1,6 @@
 # LanShare for Windows
 
-Windows desktop client implemented with WPF and .NET 8. It advertises and browses `_lanshare._tcp` using IPv4 mDNS, asks before receiving, streams one file at a time, and saves accepted files under `%USERPROFILE%\Downloads\LanShare`. **4자리 코드 / QR로 전송** opens the same PeerJS/WebRTC transfer page used by the website inside the app. Files received through that page are saved under `%USERPROFILE%\Downloads\LanShare`. The WebView2 SDK is included as a NuGet dependency.
+Windows desktop client implemented with WPF and .NET 8. It displays a four-digit local connection code and advertises it over IPv4 mDNS (`_lanshare._tcp`). Entering another device's code selects that discovered peer; the apps then transfer files directly over TCP and save received files under `%USERPROFILE%\Downloads\LanShare`. The website and internet servers do not carry app-to-app file data.
 
 ## Build on Windows
 
