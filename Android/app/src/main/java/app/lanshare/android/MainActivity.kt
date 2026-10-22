@@ -29,6 +29,10 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.ServerSocket
 import java.net.Socket
+import java.net.InetAddress
+import java.net.NetworkInterface
+import java.net.URLEncoder
+import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.text.DecimalFormat
 import java.util.Locale
@@ -57,6 +61,7 @@ class MainActivity : Activity() {
     private var discoveryListener: NsdManager.DiscoveryListener? = null
     private var registrationListener: NsdManager.RegistrationListener? = null
     private var serverSocket: ServerSocket? = null
+    @Volatile private var webServerSocket: ServerSocket? = null
     private var chosenUri: android.net.Uri? = null
     private var chosenName: String? = null
     private var chosenSize: Long = 0
@@ -83,8 +88,16 @@ class MainActivity : Activity() {
 
         text("⇅  LanShare", 28, Color.rgb(24, 39, 64), true).also { root.addView(it) }
         text("같은 네트워크에서 파일을 바로 주고받으세요", 14, Color.rgb(100, 111, 130)).also {
-            root.addView(it, margin(bottom = 18))
+            root.addView(it, margin(bottom = 14))
         }
+
+        val webBridgeBtn = Button(this).apply {
+            text = "🌐 웹 브라우저 연결 (앱 없는 기기)"
+            setBackgroundColor(Color.rgb(41, 98, 255))
+            setTextColor(Color.WHITE)
+            setOnClickListener { showWebBridgeDialog() }
+        }
+        root.addView(webBridgeBtn, margin(bottom = 16))
 
         val warning = text("개발용 초안 · 전송 암호화가 적용되지 않았습니다. 신뢰하는 네트워크에서만 사용하세요.", 13, Color.rgb(130, 79, 0))
         warning.setPadding(dp(14), dp(12), dp(14), dp(12))
@@ -144,8 +157,136 @@ class MainActivity : Activity() {
             }
         } catch (_: Exception) { }
         startServer()
+        startWebBridgeServer()
         registerService()
         startDiscovery()
+    }
+
+    private fun showWebBridgeDialog() {
+        val ip = localIPv4() ?: "기기의 Wi-Fi IP를 확인할 수 없습니다"
+        val address = if (ip.startsWith("http")) ip else "http://$ip:52521"
+        AlertDialog.Builder(this)
+            .setTitle("웹 브라우저 연결")
+            .setMessage("같은 Wi-Fi에 연결된 기기에서 아래 주소를 여세요.\n\n$address\n\n상대 기기는 브라우저에서 파일을 내려받거나 이 기기로 보낼 수 있습니다.")
+            .setPositiveButton("주소 복사") { _, _ ->
+                val clipboard = getSystemService(CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("LanShare", address))
+                statusText.text = "웹 연결 주소를 복사했습니다"
+            }
+            .setNegativeButton("닫기", null)
+            .show()
+    }
+
+    private fun localIPv4(): String? = try {
+        NetworkInterface.getNetworkInterfaces().toList().asSequence()
+            .filter { it.isUp && !it.isLoopback }
+            .flatMap { it.inetAddresses.toList().asSequence() }
+            .filterIsInstance<InetAddress>()
+            .firstOrNull { it is java.net.Inet4Address && !it.isLoopbackAddress }
+            ?.hostAddress
+    } catch (_: Exception) { null }
+
+    private fun startWebBridgeServer() {
+        executor.execute {
+            try {
+                val listener = ServerSocket(52521)
+                webServerSocket = listener
+                while (!listener.isClosed) {
+                    val client = listener.accept()
+                    executor.execute { handleWebRequest(client) }
+                }
+            } catch (e: Exception) {
+                if (!isFinishing) runOnUiThread { statusText.text = "웹 연결 서버 오류: ${e.localizedMessage}" }
+            }
+        }
+    }
+
+    private fun handleWebRequest(socket: Socket) {
+        socket.use { client ->
+            client.soTimeout = 120_000
+            val input = client.getInputStream()
+            val output = client.getOutputStream()
+            val headerBytes = java.io.ByteArrayOutputStream()
+            var matched = 0
+            val separator = byteArrayOf(13, 10, 13, 10)
+            while (headerBytes.size() < 32 * 1024 && matched < separator.size) {
+                val b = input.read()
+                if (b < 0) return
+                headerBytes.write(b)
+                matched = if (b == separator[matched].toInt()) matched + 1 else if (b == 13) 1 else 0
+            }
+            if (matched != separator.size) return
+            val header = headerBytes.toString("ISO-8859-1")
+            val request = header.substringBefore("\r\n")
+            val path = request.split(' ').getOrNull(1)?.substringBefore('?') ?: "/"
+            val contentLength = Regex("(?im)^Content-Length:\\s*(\\d+)").find(header)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
+            when {
+                path == "/" -> {
+                    val download = if (chosenUri != null) "<p>선택된 파일: ${chosenName ?: "파일"} · <a href=\"/download\">파일 내려받기</a></p>" else "<p>앱에서 파일을 선택하면 여기서 내려받을 수 있습니다.</p>"
+                    val html = """<!doctype html><meta name="viewport" content="width=device-width"><title>LanShare</title><h2>LanShare · ${serviceName}</h2>$download<form id="f"><input id="file" type="file" required><button>이 기기로 보내기</button></form><p id="s"></p><script>f.onsubmit=async e=>{e.preventDefault();let x=file.files[0];s.textContent='전송 중…';let r=await fetch('/upload?name='+encodeURIComponent(x.name),{method:'POST',body:x});s.textContent=r.ok?'전송 완료':'전송 실패'};</script>"""
+                    respond(output, "200 OK", "text/html; charset=utf-8", html.toByteArray(Charsets.UTF_8))
+                }
+                path == "/upload" -> {
+                    if (contentLength !in 0..100_000_000_000L) { respond(output, "413 Payload Too Large", "text/plain", byteArrayOf()); return }
+                    val query = request.split(' ').getOrNull(1)?.substringAfter('?', "") ?: ""
+                    val rawName = query.split('&').firstOrNull { it.startsWith("name=") }?.substringAfter('=') ?: "upload.bin"
+                    val name = safeName(runCatching { URLDecoder.decode(rawName, "UTF-8") }.getOrDefault("upload.bin")) ?: "upload.bin"
+                    val values = ContentValues().apply {
+                        put(MediaStore.Downloads.DISPLAY_NAME, uniqueDisplayName(name))
+                        put(MediaStore.Downloads.MIME_TYPE, "application/octet-stream")
+                        put(MediaStore.Downloads.RELATIVE_PATH, "Download/LanShare")
+                        put(MediaStore.Downloads.IS_PENDING, 1)
+                    }
+                    val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                        ?: run { respond(output, "500 Internal Server Error", "text/plain", byteArrayOf()); return }
+                    try {
+                        contentResolver.openOutputStream(uri, "w")!!.use { dest ->
+                            val buffer = ByteArray(64 * 1024)
+                            var remaining = contentLength
+                            while (remaining > 0) {
+                                val count = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                                if (count < 0) throw IllegalStateException("업로드 연결이 끊겼습니다")
+                                dest.write(buffer, 0, count)
+                                remaining -= count
+                            }
+                        }
+                        val published = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
+                        contentResolver.update(uri, published, null, null)
+                        respond(output, "200 OK", "text/plain; charset=utf-8", "전송 완료".toByteArray())
+                    } catch (e: Exception) {
+                        contentResolver.delete(uri, null, null)
+                        respond(output, "500 Internal Server Error", "text/plain", e.message.orEmpty().toByteArray())
+                    }
+                }
+                path == "/download" -> {
+                    val uri = chosenUri
+                    if (uri == null || chosenSize < 0) { respond(output, "404 Not Found", "text/plain", byteArrayOf()); return }
+                    val source = contentResolver.openInputStream(uri)
+                    if (source == null) { respond(output, "404 Not Found", "text/plain", byteArrayOf()); return }
+                    val name = chosenName ?: "download.bin"
+                    val encoded = URLEncoder.encode(name, "UTF-8").replace("+", "%20")
+                    output.write("HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Disposition: attachment; filename*=UTF-8''$encoded\r\nContent-Length: $chosenSize\r\nConnection: close\r\n\r\n".toByteArray(Charsets.US_ASCII))
+                    source.use {
+                        val buffer = ByteArray(64 * 1024)
+                        var remaining = chosenSize
+                        while (remaining > 0) {
+                            val count = it.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                            if (count < 0) break
+                            output.write(buffer, 0, count)
+                            remaining -= count
+                        }
+                    }
+                    output.flush()
+                }
+                else -> respond(output, "404 Not Found", "text/plain", byteArrayOf())
+            }
+        }
+    }
+
+    private fun respond(out: java.io.OutputStream, status: String, type: String, body: ByteArray) {
+        out.write("HTTP/1.1 $status\r\nContent-Type: $type\r\nContent-Length: ${body.size}\r\nConnection: close\r\n\r\n".toByteArray(Charsets.US_ASCII))
+        out.write(body)
+        out.flush()
     }
 
     private fun startServer() {
@@ -538,6 +679,7 @@ class MainActivity : Activity() {
         try { wifiLock.takeIf { it.isHeld }?.release() } catch (_: Exception) { }
         try { activeSocket?.close() } catch (_: Exception) { }
         try { serverSocket?.close() } catch (_: Exception) { }
+        try { webServerSocket?.close() } catch (_: Exception) { }
         executor.shutdownNow()
         super.onDestroy()
     }

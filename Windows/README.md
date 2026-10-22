@@ -1,6 +1,6 @@
 # LanShare for Windows
 
-Windows desktop client implemented with WPF and .NET 8. It advertises and browses `_lanshare._tcp` using IPv4 mDNS, asks before receiving, streams one file at a time, and saves accepted files under `%USERPROFILE%\Downloads\LanShare`.
+Windows desktop client implemented with WPF and .NET 8. It advertises and browses `_lanshare._tcp` using IPv4 mDNS, asks before receiving, streams one file at a time, and saves accepted files under `%USERPROFILE%\Downloads\LanShare`. **웹 브라우저 연결** starts an HTTP bridge on port 52521. Devices on the same Wi-Fi can upload a file to Downloads/LanShare or download the file selected in the app.
 
 ## Build on Windows
 

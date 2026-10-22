@@ -1,6 +1,6 @@
 # LanShare for Android
 
-Native Android client for the LanShare local network file transfer app. It uses Android NSD to discover/advertise `_lanshare._tcp`, names itself using the Android device name, requests approval before receiving, streams a single file, and saves completed files under `Download/LanShare`. During transfers it shows speed and estimated time remaining. A connected-device foreground service and CPU/Wi-Fi locks keep an active transfer running when the display turns off; Android shows an ongoing notification for the transfer.
+Native Android client for the LanShare local network file transfer app. It uses Android NSD to discover/advertise `_lanshare._tcp`, names itself using the Android device name, requests approval before receiving, streams a single file, and saves completed files under `Download/LanShare`. During transfers it shows speed and estimated time remaining. A connected-device foreground service and CPU/Wi-Fi locks keep an active transfer running when the display turns off; Android shows an ongoing notification for the transfer. The **웹 브라우저 연결** button starts an HTTP bridge on port 52521 so browser-only devices on the same Wi-Fi can upload files and download the file selected in the app.
 
 ## Build
 
