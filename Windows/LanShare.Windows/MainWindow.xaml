@@ -15,7 +15,7 @@
                 <StackPanel DockPanel.Dock="Top">
                     <TextBlock Text="⇅  LanShare" FontSize="26" FontWeight="Bold" Foreground="#182740" />
                     <TextBlock Text="같은 네트워크에서 바로 전송" Margin="0,4,0,18" Foreground="#68758B" />
-                    <Button Content="🌐 웹 브라우저 연결" Margin="0,0,0,14" Padding="10,8" Click="WebBridge_Click" />
+                    <Button Content="🌐 4자리 코드 / QR로 전송" Margin="0,0,0,14" Padding="10,8" Click="WebTransfer_Click" />
                     <DockPanel Margin="0,0,0,10">
                         <TextBlock Text="주변 기기" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center" />
                         <Button Content="새로고침" DockPanel.Dock="Right" Padding="10,5" Click="Refresh_Click" />

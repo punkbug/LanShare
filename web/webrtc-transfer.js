@@ -448,19 +448,58 @@
     el.transferStatus.style.color = 'var(--success)';
     playSuccessChime();
 
-    // Trigger Browser Download
     const blob = new Blob(receivedChunks, { type: incomingMetadata.mime });
-    const blobUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = blobUrl;
-    a.download = incomingMetadata.name;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    if (window.lanShareNative) {
+      saveToNativeApp(blob, incomingMetadata.name, incomingMetadata.mime);
+    } else {
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = incomingMetadata.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+    }
 
     receivedChunks = [];
     receivedBytes = 0;
+  }
+
+  async function saveToNativeApp(blob, name, mime) {
+    try {
+      const bridge = window.lanShareNative;
+      bridge.beginFile(name, mime || 'application/octet-stream', blob.size);
+      const chunkSize = 48 * 1024;
+      const reader = blob.stream().getReader();
+      let pending = new Uint8Array(0);
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        const bytes = new Uint8Array(pending.length + value.length);
+        bytes.set(pending);
+        bytes.set(value, pending.length);
+        let offset = 0;
+        while (bytes.length - offset >= chunkSize) {
+          const chunk = bytes.subarray(offset, offset + chunkSize);
+          let binary = '';
+          for (let i = 0; i < chunk.length; i++) binary += String.fromCharCode(chunk[i]);
+          bridge.writeChunk(btoa(binary));
+          offset += chunkSize;
+        }
+        pending = bytes.slice(offset);
+      }
+      if (pending.length) {
+        let binary = '';
+        for (let i = 0; i < pending.length; i++) binary += String.fromCharCode(pending[i]);
+        bridge.writeChunk(btoa(binary));
+      }
+      bridge.completeFile();
+      if (el.transferStatus) el.transferStatus.textContent = '🎉 전송 완료! 앱의 다운로드 폴더에 저장했습니다.';
+    } catch (error) {
+      console.error('Native save failed', error);
+      if (el.transferStatus) el.transferStatus.textContent = '파일을 앱에 저장하지 못했습니다.';
+    }
   }
 
   function resetTransferUI() {

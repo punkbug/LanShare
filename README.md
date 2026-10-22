@@ -40,7 +40,7 @@ open dist/LanShare.app
 | iOS/iPadOS | `iOS/LanShareIOS.xcodeproj` | 개발용 앱, 전송 중 앱을 열어 둬야 함 |
 | Windows | `Windows/LanShare.Windows/` | .NET 8 WPF 앱, Windows에서 빌드 필요 |
 
-macOS, Android, iOS/iPadOS, Windows 앱에는 같은 Wi-Fi의 브라우저와 직접 파일을 주고받는 웹 브리지가 포함됩니다. 앱에서 웹 연결 주소를 확인해 브라우저로 열면 됩니다. 웹 브리지 포트는 `52521`이며, 웹 전송도 현재 암호화나 기기 인증을 제공하지 않습니다.
+macOS, Android, iOS/iPadOS, Windows 앱의 **4자리 코드 / QR로 전송** 메뉴는 운영 웹사이트의 동일한 PeerJS/WebRTC 화면을 앱 안에서 엽니다. 앱과 브라우저가 같은 코드·QR 방식으로 연결되며, 웹 화면으로 받은 파일은 각 플랫폼의 LanShare 폴더에 저장됩니다.
 
 ## 제품 원칙
 

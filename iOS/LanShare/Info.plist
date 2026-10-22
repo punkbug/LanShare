@@ -10,7 +10,7 @@
 	<key>CFBundleShortVersionString</key><string>0.1.0</string>
 	<key>CFBundleVersion</key><string>1</string>
 	<key>LSRequiresIPhoneOS</key><true/>
-	<key>NSLocalNetworkUsageDescription</key><string>같은 네트워크의 LanShare 기기를 찾아 파일을 직접 전송하고, 웹 브라우저와 파일을 주고받습니다.</string>
+	<key>NSLocalNetworkUsageDescription</key><string>같은 네트워크에서 LanShare 기기를 찾아 파일을 직접 전송합니다.</string>
 	<key>NSBonjourServices</key><array><string>_lanshare._tcp</string></array>
 	<key>UIFileSharingEnabled</key><true/>
 	<key>LSSupportsOpeningDocumentsInPlace</key><true/>

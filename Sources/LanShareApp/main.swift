@@ -1,9 +1,9 @@
 import AppKit
-import CoreImage
 import Darwin
 import Network
 import SwiftUI
 import UniformTypeIdentifiers
+import WebKit
 
 @main
 struct LanShareApp: App {
@@ -45,13 +45,9 @@ final class LanShareModel: ObservableObject {
     @Published var transferDetails = ""
     @Published var isTransferring = false
 
-    // Web Bridge (Web Browser Direct Transfer)
-    @Published var showWebBridgeSheet = false
-    @Published var webBridgeURL: String = ""
-    @Published var webBridgeQRCode: NSImage? = nil
+    @Published var showWebTransferSheet = false
 
     private let service = LanService()
-    private let webBridge = WebBridgeService()
     private var transferStartedAt = ProcessInfo.processInfo.systemUptime
 
     init() {
@@ -80,25 +76,6 @@ final class LanShareModel: ObservableObject {
         }
         service.start()
 
-        // Start Web Bridge HTTP Streaming Server
-        webBridge.currentSharedFileProvider = { [weak self] in
-            self?.selectedFile
-        }
-        webBridge.onUploadedFileReceived = { [weak self] fileName, size in
-            Task { @MainActor in
-                self?.status = "웹 브라우저에서 '\(fileName)' 수신 완료 (\(ByteCountFormatter.string(fromByteCount: size, countStyle: .file)))"
-                NSSound.beep()
-            }
-        }
-        webBridge.start()
-        refreshWebBridgeInfo()
-    }
-
-    func refreshWebBridgeInfo() {
-        let ip = WebBridgeService.getLocalIPAddress() ?? "127.0.0.1"
-        let urlString = "http://\(ip):52521"
-        self.webBridgeURL = urlString
-        self.webBridgeQRCode = WebBridgeService.generateQRCode(from: urlString)
     }
 
     func chooseFile() {
@@ -178,7 +155,6 @@ final class LanShareModel: ObservableObject {
         selectedPeerID = nil
         status = "주변 기기를 다시 찾는 중입니다…"
         service.refreshPeers()
-        refreshWebBridgeInfo()
     }
 }
 
@@ -200,18 +176,17 @@ struct ContentView: View {
 
                 // Web Browser Direct Transfer Action Banner
                 Button(action: {
-                    model.refreshWebBridgeInfo()
-                    model.showWebBridgeSheet = true
+                    model.showWebTransferSheet = true
                 }) {
                     HStack(spacing: 10) {
                         Image(systemName: "qrcode.viewfinder")
                             .font(.system(size: 20))
                             .foregroundStyle(.white)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("스마트폰 웹 브라우저 연결")
+                            Text("4자리 코드 / QR로 전송")
                                 .font(.subheadline.bold())
                                 .foregroundStyle(.white)
-                            Text("앱 설치 없이 QR로 즉시 송수신")
+                            Text("웹과 같은 보안 코드로 연결")
                                 .font(.caption2)
                                 .foregroundStyle(.white.opacity(0.85))
                         }
@@ -224,7 +199,7 @@ struct ContentView: View {
                     )
                 }
                 .buttonStyle(.plain)
-                .help("스마트폰 카메라로 QR을 스캔하여 앱 없이 브라우저로 전송합니다")
+                .help("웹과 같은 4자리 코드 또는 QR로 파일을 주고받습니다")
 
                 Divider()
 
@@ -242,7 +217,7 @@ struct ContentView: View {
                     VStack(spacing: 10) {
                         Image(systemName: "wifi.slash").font(.system(size: 28)).foregroundStyle(.secondary)
                         Text("주변 기기 찾는 중").font(.subheadline.bold())
-                        Text("상대 기기에서 LanShare를 켜거나,\n상단 [스마트폰 웹 연결]을 이용하세요.")
+                        Text("상대 기기에서 LanShare를 켜거나,\n상단 [4자리 코드 / QR로 전송]을 이용하세요.")
                             .font(.caption).foregroundStyle(.secondary).multilineTextAlignment(.center)
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -280,7 +255,7 @@ struct ContentView: View {
                             Text(ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file))
                                 .font(.caption).foregroundStyle(.secondary)
                         } else {
-                            Text("이곳에 파일을 올리면 스마트폰 웹에서도 바로 다운로드 가능합니다")
+                            Text("웹 연결 화면에서 파일을 보내고 받을 수 있습니다")
                                 .font(.caption).foregroundStyle(.secondary)
                         }
                     }
@@ -326,10 +301,9 @@ struct ContentView: View {
                     .disabled(model.selectedFile == nil || model.selectedPeerID == nil || model.isTransferring)
 
                     Button(action: {
-                        model.refreshWebBridgeInfo()
-                        model.showWebBridgeSheet = true
+                        model.showWebTransferSheet = true
                     }) {
-                        Label("웹 브라우저로 공유 (QR)", systemImage: "qrcode")
+                        Label("4자리 코드 / QR로 전송", systemImage: "qrcode")
                             .padding(.vertical, 6)
                     }
                     .buttonStyle(.bordered)
@@ -347,78 +321,83 @@ struct ContentView: View {
                 secondaryButton: .cancel(Text("거절")) { model.respondToIncoming(false) }
             )
         }
-        .sheet(isPresented: $model.showWebBridgeSheet) {
-            WebBridgeSheetView(
-                url: model.webBridgeURL,
-                qrImage: model.webBridgeQRCode,
-                sharedFile: model.selectedFile,
-                onDismiss: { model.showWebBridgeSheet = false }
-            )
+        .sheet(isPresented: $model.showWebTransferSheet) {
+            WebTransferSheetView(onDismiss: { model.showWebTransferSheet = false })
         }
     }
 }
 
-// Sheet View for Web Browser QR & Link Transfer
-struct WebBridgeSheetView: View {
-    let url: String
-    let qrImage: NSImage?
-    let sharedFile: URL?
+private struct WebTransferSheetView: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 0) {
             HStack {
-                Text("스마트폰 웹 브라우저와 직접 연결").font(.title3.bold())
+                Text("4자리 코드 / QR로 전송").font(.title3.bold())
                 Spacer()
                 Button("닫기", action: onDismiss).buttonStyle(.borderless)
             }
-
-            Text("상대방 기기에 앱이 없어도 괜찮습니다!\n스마트폰 기본 카메라로 아래 QR 코드를 비추면 브라우저에서 즉시 송수신됩니다.")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-
-            if let qrImage {
-                Image(nsImage: qrImage)
-                    .interpolation(.none)
-                    .resizable()
-                    .scaledToFit()
-                    .frame(width: 200, height: 200)
-                    .padding(12)
-                    .background(Color.white)
-                    .cornerRadius(16)
-                    .shadow(radius: 4)
-            }
-
-            VStack(spacing: 6) {
-                Text("브라우저 직접 접속 주소:")
-                    .font(.caption).foregroundStyle(.secondary)
-                HStack {
-                    Text(url).font(.system(.body, design: .monospaced).bold())
-                    Button("복사") {
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.setString(url, forType: .string)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                }
-            }
-
-            if let sharedFile {
-                HStack(spacing: 8) {
-                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                    Text("선택된 파일: \(sharedFile.lastPathComponent)")
-                        .font(.caption.bold())
-                }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(.quaternary, in: Capsule())
-            }
-
-            Spacer()
+            WebTransferView().frame(minWidth: 900, minHeight: 650)
         }
-        .padding(28)
-        .frame(width: 480, height: 490)
+        .padding(12)
+        .frame(minWidth: 930, minHeight: 710)
+    }
+}
+
+private struct WebTransferView: NSViewRepresentable {
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    func makeNSView(context: Context) -> WKWebView {
+        let controller = WKUserContentController()
+        controller.add(context.coordinator, name: "lanShareNative")
+        controller.addUserScript(WKUserScript(source: Self.bridgeScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
+        let configuration = WKWebViewConfiguration()
+        configuration.userContentController = controller
+        let view = WKWebView(frame: .zero, configuration: configuration)
+        view.load(URLRequest(url: URL(string: "https://lanshare-five.vercel.app/#web-direct-transfer")!))
+        return view
+    }
+
+    func updateNSView(_ nsView: WKWebView, context: Context) {}
+
+    private static let bridgeScript = """
+    window.lanShareNative={beginFile:(name,mime,size)=>webkit.messageHandlers.lanShareNative.postMessage({type:'begin',name,mime,size}),writeChunk:data=>webkit.messageHandlers.lanShareNative.postMessage({type:'chunk',data}),completeFile:()=>webkit.messageHandlers.lanShareNative.postMessage({type:'complete'})};
+    """
+
+    final class Coordinator: NSObject, WKScriptMessageHandler {
+        private let queue = DispatchQueue(label: "app.lanshare.web-download")
+        private var destination: URL?
+        private var output: FileHandle?
+        deinit {
+            output?.closeFile()
+            if let destination { try? FileManager.default.removeItem(at: destination) }
+        }
+
+        func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
+            guard let data = message.body as? [String: Any], let type = data["type"] as? String else { return }
+            queue.async { [weak self] in self?.handle(data: data, type: type) }
+        }
+
+        private func handle(data: [String: Any], type: String) {
+            switch type {
+            case "begin":
+                guard let name = data["name"] as? String, let safe = LanService.safeFileName(name) else { return }
+                let folder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0].appendingPathComponent("LanShare", isDirectory: true)
+                try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                guard let (url, handle) = LanService.createSafeDestination(directory: folder, name: safe) else { return }
+                destination = url
+                output = handle
+            case "chunk":
+                guard let encoded = data["data"] as? String, let bytes = Data(base64Encoded: encoded) else { return }
+                output?.write(bytes)
+            case "complete":
+                output?.closeFile()
+                output = nil
+                destination = nil
+                DispatchQueue.main.async { NSSound.beep() }
+            default: break
+            }
+        }
     }
 }
 
@@ -628,270 +607,4 @@ final class LanService {
     }
 
     enum TransferError: Error { case invalidRequest }
-}
-
-// MARK: - Web Bridge Service (HTTP Server for Zero-Install Browser Direct Transfer)
-final class WebBridgeService {
-    private let queue = DispatchQueue(label: "app.lanshare.webbridge", qos: .userInitiated)
-    private var listener: NWListener?
-    let port: UInt16 = 52521
-
-    var currentSharedFileProvider: (() -> URL?)?
-    var onUploadedFileReceived: ((String, Int64) -> Void)?
-
-    func start() {
-        do {
-            let params = NWParameters.tcp
-            params.allowLocalEndpointReuse = true
-            let listener = try NWListener(using: params, on: NWEndpoint.Port(rawValue: port)!)
-            listener.newConnectionHandler = { [weak self] connection in
-                self?.handleHTTPConnection(connection)
-            }
-            self.listener = listener
-            listener.start(queue: queue)
-        } catch {
-            print("WebBridgeService start failed: \(error)")
-        }
-    }
-
-    private func handleHTTPConnection(_ connection: NWConnection) {
-        connection.start(queue: queue)
-        var buffer = Data()
-
-        func readRequest() {
-            connection.receive(minimumIncompleteLength: 1, maximumLength: 16384) { [weak self] data, _, _, error in
-                guard let self else { connection.cancel(); return }
-                if let data { buffer.append(data) }
-                if error != nil { connection.cancel(); return }
-
-                if let headerRange = buffer.range(of: Data("\r\n\r\n".utf8)) {
-                    let headerString = String(decoding: buffer[..<headerRange.lowerBound], as: UTF8.self)
-                    let bodyData = buffer[headerRange.upperBound...]
-                    self.dispatchHTTP(requestHeader: headerString, body: Data(bodyData), connection: connection)
-                } else if buffer.count < 32768 {
-                    readRequest()
-                } else {
-                    connection.cancel()
-                }
-            }
-        }
-        readRequest()
-    }
-
-    private func dispatchHTTP(requestHeader: String, body: Data, connection: NWConnection) {
-        let firstLine = requestHeader.components(separatedBy: "\r\n").first ?? ""
-        let parts = firstLine.components(separatedBy: " ")
-        guard parts.count >= 2 else { connection.cancel(); return }
-        let method = parts[0]
-        let path = parts[1]
-
-        if method == "GET" && path == "/" {
-            sendHTMLPage(connection: connection)
-        } else if method == "GET" && path.hasPrefix("/download") {
-            serveFileDownload(connection: connection)
-        } else if method == "POST" && path.hasPrefix("/upload") {
-            handleFileUpload(header: requestHeader, body: body, connection: connection)
-        } else {
-            let response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
-            connection.send(content: Data(response.utf8), completion: .contentProcessed { _ in connection.cancel() })
-        }
-    }
-
-    private func sendHTMLPage(connection: NWConnection) {
-        let deviceName = Host.current().localizedName ?? "Mac"
-        let currentFile = currentSharedFileProvider?()
-        let fileName = currentFile?.lastPathComponent ?? ""
-        let fileSizeStr: String
-        if let currentFile, let size = try? currentFile.resourceValues(forKeys: [.fileSizeKey]).fileSize {
-            fileSizeStr = ByteCountFormatter.string(fromByteCount: Int64(size), countStyle: .file)
-        } else {
-            fileSizeStr = ""
-        }
-
-        let downloadSection: String
-        if !fileName.isEmpty {
-            downloadSection = """
-            <div class="card">
-              <h3>📥 Mac에서 파일 다운로드</h3>
-              <p>파일명: <strong>\(fileName)</strong> (\(fileSizeStr))</p>
-              <a href="/download" class="btn btn-primary" download>스마트폰에 저장하기</a>
-            </div>
-            """
-        } else {
-            downloadSection = """
-            <div class="card" style="opacity: 0.7;">
-              <h3>📥 Mac에서 파일 다운로드</h3>
-              <p>현재 Mac의 LanShare 앱에서 선택된 파일이 없습니다.</p>
-            </div>
-            """
-        }
-
-        let html = """
-        <!DOCTYPE html>
-        <html lang="ko">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>LanShare Web Bridge</title>
-          <style>
-            :root { --accent: #38bdf8; --bg: #0f172a; --card: #1e293b; --text: #f8fafc; }
-            body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 24px; display: flex; flex-direction: column; align-items: center; }
-            .container { max-width: 500px; width: 100%; }
-            .header { text-align: center; margin-bottom: 24px; }
-            .card { background: var(--card); border-radius: 16px; padding: 22px; margin-bottom: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-            .card h3 { margin-top: 0; font-size: 1.15rem; color: var(--accent); }
-            .btn { display: inline-block; width: 100%; box-sizing: border-box; text-align: center; padding: 14px; border-radius: 10px; font-weight: 700; text-decoration: none; cursor: pointer; border: none; font-size: 1rem; }
-            .btn-primary { background: linear-gradient(135deg, #38bdf8, #6366f1); color: #fff; }
-            .file-input { width: 100%; box-sizing: border-box; padding: 12px; background: rgba(0,0,0,0.2); border-radius: 8px; border: 1px dashed #64748b; color: #fff; margin-bottom: 14px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h2>🌐 LanShare Web Bridge</h2>
-              <p style="color: #94a3b8; font-size: 0.9rem;">연결된 Mac: <strong>\(deviceName)</strong></p>
-            </div>
-
-            \(downloadSection)
-
-            <div class="card">
-              <h3>📤 Mac으로 파일 / 사진 전송</h3>
-              <form action="/upload" method="post" enctype="multipart/form-data">
-                <input type="file" name="file" class="file-input" required>
-                <button type="submit" class="btn btn-primary">Mac으로 직접 전송하기</button>
-              </form>
-            </div>
-          </div>
-        </body>
-        </html>
-        """
-
-        let response = """
-        HTTP/1.1 200 OK\r
-        Content-Type: text/html; charset=utf-8\r
-        Content-Length: \(html.utf8.count)\r
-        Connection: close\r
-        \r
-        \(html)
-        """
-        connection.send(content: Data(response.utf8), completion: .contentProcessed { _ in connection.cancel() })
-    }
-
-    private func serveFileDownload(connection: NWConnection) {
-        guard let file = currentSharedFileProvider?(),
-              let input = try? FileHandle(forReadingFrom: file),
-              let size = (try? file.resourceValues(forKeys: [.fileSizeKey]).fileSize) else {
-            let response = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
-            connection.send(content: Data(response.utf8), completion: .contentProcessed { _ in connection.cancel() })
-            return
-        }
-
-        let encodedName = file.lastPathComponent.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? "file"
-        let header = """
-        HTTP/1.1 200 OK\r
-        Content-Type: application/octet-stream\r
-        Content-Disposition: attachment; filename="\(encodedName)"\r
-        Content-Length: \(size)\r
-        Connection: close\r
-        \r
-
-        """
-        connection.send(content: Data(header.utf8), completion: .contentProcessed { [weak self] _ in
-            self?.streamFileChunks(connection: connection, fileHandle: input, total: Int64(size), sent: 0)
-        })
-    }
-
-    private func streamFileChunks(connection: NWConnection, fileHandle: FileHandle, total: Int64, sent: Int64) {
-        if sent >= total {
-            fileHandle.closeFile()
-            connection.cancel()
-            return
-        }
-        let chunk = fileHandle.readData(ofLength: 64 * 1024)
-        if chunk.isEmpty {
-            fileHandle.closeFile()
-            connection.cancel()
-            return
-        }
-        connection.send(content: chunk, completion: .contentProcessed { [weak self] error in
-            if error != nil { fileHandle.closeFile(); connection.cancel(); return }
-            self?.streamFileChunks(connection: connection, fileHandle: fileHandle, total: total, sent: sent + Int64(chunk.count))
-        })
-    }
-
-    private func handleFileUpload(header: String, body: Data, connection: NWConnection) {
-        // Quick multipart boundary parsing
-        let defaultName = "upload-\(Int(Date().timeIntervalSince1970)).bin"
-        var targetFileName = defaultName
-        if let filenameRange = header.range(of: "filename=\"") {
-            let sub = header[filenameRange.upperBound...]
-            if let endQuote = sub.firstIndex(of: "\"") {
-                targetFileName = LanService.safeFileName(String(sub[..<endQuote])) ?? defaultName
-            }
-        }
-
-        let downloads = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask).first!
-        if let (_, handle) = LanService.createSafeDestination(directory: downloads, name: targetFileName) {
-            handle.write(body)
-            handle.closeFile()
-            onUploadedFileReceived?(targetFileName, Int64(body.count))
-        }
-
-        let successHTML = """
-        <!DOCTYPE html><html><body style="background:#0f172a;color:#fff;font-family:sans-serif;text-align:center;padding:40px;">
-          <h2>🎉 전송 완료!</h2>
-          <p>Mac의 다운로드 폴더에 안전하게 저장되었습니다.</p>
-          <a href="/" style="color:#38bdf8;text-decoration:none;">← 돌아가기</a>
-        </body></html>
-        """
-        let response = """
-        HTTP/1.1 200 OK\r
-        Content-Type: text/html; charset=utf-8\r
-        Content-Length: \(successHTML.utf8.count)\r
-        Connection: close\r
-        \r
-        \(successHTML)
-        """
-        connection.send(content: Data(response.utf8), completion: .contentProcessed { _ in connection.cancel() })
-    }
-
-    static func getLocalIPAddress() -> String? {
-        var address: String?
-        var ifaddr: UnsafeMutablePointer<ifaddrs>?
-        guard getifaddrs(&ifaddr) == 0, let firstAddr = ifaddr else { return nil }
-        defer { freeifaddrs(ifaddr) }
-
-        for ptr in sequence(first: firstAddr, next: { $0.pointee.ifa_next }) {
-            let interface = ptr.pointee
-            let addrFamily = interface.ifa_addr.pointee.sa_family
-            if addrFamily == UInt8(AF_INET) {
-                let name = String(cString: interface.ifa_name)
-                if name == "en0" || name == "en1" || name == "wlan0" {
-                    var hostname = [CChar](repeating: 0, count: Int(NI_MAXHOST))
-                    getnameinfo(interface.ifa_addr, socklen_t(interface.ifa_addr.pointee.sa_len),
-                                &hostname, socklen_t(hostname.count),
-                                nil, socklen_t(0), NI_NUMERICHOST)
-                    address = String(cString: hostname)
-                    break
-                }
-            }
-        }
-        return address
-    }
-
-    static func generateQRCode(from string: String) -> NSImage? {
-        guard let data = string.data(using: .ascii),
-              let filter = CIFilter(name: "CIQRCodeGenerator") else { return nil }
-        filter.setValue(data, forKey: "inputMessage")
-        filter.setValue("M", forKey: "inputCorrectionLevel")
-
-        guard let ciImage = filter.outputImage else { return nil }
-        let transform = CGAffineTransform(scaleX: 10, y: 10)
-        let scaledImage = ciImage.transformed(by: transform)
-
-        let rep = NSCIImageRep(ciImage: scaledImage)
-        let nsImage = NSImage(size: rep.size)
-        nsImage.addRepresentation(rep)
-        return nsImage
-    }
 }

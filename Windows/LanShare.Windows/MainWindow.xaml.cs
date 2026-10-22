@@ -10,7 +10,6 @@ public partial class MainWindow : Window
 {
     private readonly ObservableCollection<Peer> _peers = [];
     private readonly LanShareService _service = new();
-    private readonly WebBridgeServer _webBridge = new();
     private string? _selectedFile;
     private DateTime _startedAt;
 
@@ -59,23 +58,17 @@ public partial class MainWindow : Window
                 TransferProgress.Value = 100;
             SendButton.IsEnabled = _selectedFile is not null && PeersList.SelectedItem is Peer;
         });
-        _webBridge.FileReceived += name => Dispatcher.Invoke(() => StatusText.Text = $"웹 브라우저에서 파일을 받았습니다 · {name}");
         _service.Error += message => Dispatcher.Invoke(() =>
         {
             StatusText.Text = message;
             SendButton.IsEnabled = _selectedFile is not null && PeersList.SelectedItem is Peer;
         });
-        Loaded += async (_, _) => { await _service.StartAsync(); _webBridge.Start(() => _selectedFile); };
-        Closed += (_, _) => { _service.Dispose(); _webBridge.Dispose(); };
+        Loaded += async (_, _) => await _service.StartAsync();
+        Closed += (_, _) => _service.Dispose();
     }
 
     private void Refresh_Click(object sender, RoutedEventArgs e) => _service.Refresh();
-    private void WebBridge_Click(object sender, RoutedEventArgs e)
-    {
-        var address = $"http://{WebBridgeServer.LocalIPv4() ?? "127.0.0.1"}:52521";
-        Clipboard.SetText(address);
-        MessageBox.Show(this, $"같은 Wi-Fi의 기기에서 아래 주소를 여세요.\n\n{address}\n\n주소를 클립보드에 복사했습니다.", "웹 브라우저 연결", MessageBoxButton.OK, MessageBoxImage.Information);
-    }
+    private void WebTransfer_Click(object sender, RoutedEventArgs e) => new WebTransferWindow { Owner = this }.ShowDialog();
     private void PeersList_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateSendEnabled();
 
     private void ChooseFile_Click(object sender, RoutedEventArgs e)
