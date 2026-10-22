@@ -10,10 +10,10 @@ LanShare(랜셰어) 서비스의 홍보, 제품 소개 및 각 플랫폼별 빌�
 2. **인터랙티브 라이브 시뮬레이터**:
    - 실제 파일을 드래그 앤 드롭하여 로컬 네트워크 전송(수신 승인 -> 초고속 스트리밍 -> 완료 사운드)을 웹 상에서 직접 체험
 3. **플랫폼별 배포 및 다운로드 허브**:
-   - **macOS**: `dist/LanShare.app` 압축본(`downloads/LanShare-macOS.zip`) 원클릭 다운로드 및 `swift run` 안내
-   - **Android**: Jetpack Compose 앱 Gradle 빌드 및 설치 안내
-   - **Windows**: .NET 8 WPF 앱 빌드 및 방화벽 설정 안내
-   - **iOS / iPadOS**: SwiftUI 앱 Xcode 프로젝트 실행 가이드
+   - **macOS**: `LanShare-macOS.dmg` (인스톨러) 및 `LanShare-macOS.zip` (앱 번들)
+   - **Android**: `LanShare-Android.apk` (안드로이드 직접 설치 패키지)
+   - **Windows**: `LanShare-Windows-Setup.zip` (.NET 8 자동 검사 및 `LanShare.exe` 생성 1-클릭 실행기)
+   - **iOS / iPadOS**: `LanShare-iOS.ipa` (Sideloadly / AltStore / TrollStore 임의 설치 패키지 및 3분 가이드)
 4. **모던 UX / UI**:
    - 다크 모드 / 라이트 모드 전환 (시스템 설정 자동 감지 및 로컬스토리지 보존)
    - 접속 기기(OS) 자동 감지 및 맞춤형 다운로드 버튼 라벨링

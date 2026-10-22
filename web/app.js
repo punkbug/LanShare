@@ -37,41 +37,35 @@ function detectOS() {
   const heroHint = document.getElementById('hero-os-hint');
   
   let os = 'macos';
-  let label = 'macOS 다운로드 (.zip)';
+  let label = 'macOS 다운로드 (.dmg)';
   let hint = 'macOS 13+ (Ventura, Sonoma, Sequoia 등 지원)';
   let targetTab = 'tab-macos';
-  let href = 'downloads/LanShare-macOS.zip';
+  let href = 'downloads/LanShare-macOS.dmg';
 
   if (userAgent.indexOf('win') !== -1) {
     os = 'windows';
-    label = 'Windows 가이드 보기';
-    hint = 'Windows 10 / 11 64-bit 지원 (.NET 8 WPF)';
+    label = 'Windows 패키지 다운로드 (.zip)';
+    hint = 'Windows 10 / 11 64-bit 지원 (1-클릭 설치 및 실행)';
     targetTab = 'tab-windows';
-    href = '#platforms';
+    href = 'downloads/LanShare-Windows-Setup.zip';
   } else if (userAgent.indexOf('android') !== -1) {
     os = 'android';
-    label = 'Android 안내 보기';
-    hint = 'Android 8.0 Oreo 이상 지원';
+    label = 'Android APK 다운로드 (.apk)';
+    hint = 'Android 8.0 Oreo 이상 지원 (즉시 설치 가능)';
     targetTab = 'tab-android';
-    href = '#platforms';
+    href = 'downloads/LanShare-Android.apk';
   } else if (/iphone|ipad|ipod/.test(userAgent)) {
     os = 'ios';
-    label = 'iOS / iPadOS 안내';
-    hint = 'iOS 16+ (TestFlight / Xcode 빌드 지원)';
+    label = 'iOS 앱 다운로드 (.ipa)';
+    hint = 'iOS 16+ 지원 (Sideloadly / AltStore 간편 설치)';
     targetTab = 'tab-ios';
-    href = '#platforms';
+    href = 'downloads/LanShare-iOS.ipa';
   }
 
   if (heroBtn) {
     heroBtn.textContent = label;
     heroBtn.setAttribute('href', href);
-    if (href.startsWith('#')) {
-      heroBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        document.getElementById('platforms')?.scrollIntoView({ behavior: 'smooth' });
-        document.getElementById(targetTab)?.click();
-      });
-    }
+    heroBtn.setAttribute('download', '');
   }
 
   if (heroHint) {
