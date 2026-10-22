@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LanShare - 클라우드 없이 가장 빠른 로컬 네트워크 파일 전송</title>
+  <meta name="description" content="인터넷 서버나 계정 없이, 같은 Wi-Fi/로컬 네트워크 안의 기기(Mac, Android, Windows, iOS)끼리 직접 초고속으로 파일을 주고받는 P2P 파일 공유 서비스">
+  
+  <!-- Open Graph -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="LanShare - 로컬 네트워크 다이렉트 파일 전송">
+  <meta property="og:description" content="회원가입도 클라우드 업로드도 없습니다. 같은 Wi-Fi에서 대용량 파일도 즉각 1:1 직결 전송하세요.">
+  <meta property="og:image" content="assets/logo.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Ambient Glows -->
+  <div class="ambient-glow glow-top-left"></div>
+  <div class="ambient-glow glow-top-right"></div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="container nav-container">
+      <a href="#" class="brand">
+        <img src="assets/logo.png" alt="LanShare Logo" class="brand-icon">
+        <span>LanShare</span>
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="#features">기능</a></li>
+        <li><a href="#how-it-works">작동 방식</a></li>
+        <li><a href="#simulator">라이브 체험</a></li>
+        <li><a href="#platforms">다운로드</a></li>
+        <li><a href="#comparison">비교</a></li>
+        <li><a href="#faq">FAQ</a></li>
+      </ul>
+
+      <div class="nav-actions">
+        <button id="theme-toggle" class="theme-toggle-btn" aria-label="테마 전환" title="다크/라이트 모드 전환">☀️</button>
+        <a href="#platforms" class="btn btn-primary btn-sm">앱 받기</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero Section -->
+  <header class="hero">
+    <div class="container">
+      <div class="badge-pill">
+        <span class="badge-dot"></span>
+        <span>개발용 v1 오픈 프로토콜 지원 · 완전 무료</span>
+      </div>
+
+      <h1>
+        클라우드 없이, 로컬 네트워크로<br>
+        <span class="gradient-text">가장 빠르고 안전한 파일 전송</span>
+      </h1>
+
+      <p class="hero-subtitle">
+        복잡한 회원가입도, 외부 인터넷 서버 업로드도 필요 없습니다.<br>
+        같은 Wi-Fi에 연결된 Mac, Android, Windows, iPhone 사이에서 대용량 파일도 네트워크 대역폭 그대로 즉시 1:1 전송하세요.
+      </p>
+
+      <div class="hero-cta">
+        <a id="hero-download-btn" href="downloads/LanShare-macOS.zip" class="btn btn-primary btn-lg" download>
+          macOS 다운로드 (.zip)
+        </a>
+        <a href="#simulator" class="btn btn-secondary btn-lg">
+          웹에서 시뮬레이션 체험하기
+        </a>
+      </div>
+      <div id="hero-os-hint" class="hero-os-hint">macOS 13+ (Ventura, Sonoma, Sequoia) 지원</div>
+
+      <!-- App Mockup Preview -->
+      <div class="hero-mockup-wrapper">
+        <div class="app-window-frame">
+          <div class="window-header">
+            <div class="window-controls">
+              <span class="win-dot red"></span>
+              <span class="win-dot yellow"></span>
+              <span class="win-dot green"></span>
+            </div>
+            <div class="window-title">LanShare — 로컬 네트워크 전송</div>
+          </div>
+          <div class="window-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
+            <!-- Left Panel: Peer Discovery Mockup -->
+            <div style="background: var(--bg-secondary); border-radius: var(--radius-md); padding: 18px; border: 1px solid var(--border-color);">
+              <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; display: flex; justify-content: space-between;">
+                <span>발견된 기기 (Bonjour / mDNS)</span>
+                <span style="color: var(--accent-primary);">● 2대 온라인</span>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(56, 189, 248, 0.12); border: 1px solid var(--accent-primary); border-radius: var(--radius-sm);">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.3rem;">📱</span>
+                    <div>
+                      <div style="font-weight: 600; font-size: 0.9rem;">Galaxy S24 (Android)</div>
+                      <div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);">192.168.1.142:52520</div>
+                    </div>
+                  </div>
+                  <span style="font-size: 0.75rem; background: var(--accent-primary); color: #fff; padding: 2px 8px; border-radius: 99px;">선택됨</span>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
+                  <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.3rem;">💻</span>
+                    <div>
+                      <div style="font-weight: 600; font-size: 0.9rem;">Office-PC (Windows 11)</div>
+                      <div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);">192.168.1.189:52520</div>
+                    </div>
+                  </div>
+                  <span style="font-size: 0.75rem; color: var(--text-muted);">대기 중</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Panel: Transfer Progress Mockup -->
+            <div style="background: var(--bg-secondary); border-radius: var(--radius-md); padding: 18px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between;">
+              <div>
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                  <span style="font-weight: 600; font-size: 0.95rem;">🎬 Project_Launch_4K.mov</span>
+                  <span style="font-size: 0.8rem; color: var(--accent-primary); font-weight: 700;">89.4 MB/s</span>
+                </div>
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;">
+                  1.42 GB / 2.05 GB (약 7초 남음)
+                </div>
+                <div style="height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden; margin-bottom: 12px;">
+                  <div style="height: 100%; width: 68%; background: var(--accent-gradient); border-radius: 4px;"></div>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 14px;">
+                <span style="font-size: 0.8rem; color: var(--success); display: flex; align-items: center; gap: 4px;">
+                  ✓ 수신자 수락 확인됨
+                </span>
+                <button class="btn btn-secondary btn-sm" style="font-size: 0.75rem; padding: 4px 10px;" disabled>전송 중…</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Key Features Section -->
+  <section id="features" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Key Features</span>
+        <h2 class="section-title">왜 LanShare여야 할까요?</h2>
+        <p class="section-desc">불필요한 클라우드 업로드 없이, 내 공유기의 물리적 최대 대역폭으로 기기끼리 직접 전송합니다.</p>
+      </div>
+
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">⚡</div>
+          <h3>초고속 LAN 직결 (P2P)</h3>
+          <p>인터넷 외부망을 경유하지 않고 Wi-Fi 또는 유선 랜(1Gbps/10Gbps) 대역폭을 그대로 활용하여 기가바이트급 영상이나 파일도 순식간에 복사됩니다.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">🔒</div>
+          <h3>제로 클라우드 프라이버시</h3>
+          <p>어떤 파일 데이터나 비밀 토큰도 외부 서버에 저장되지 않습니다. 사내 기밀 보고서, 개인 사진, 영상도 외부 유출 우려 없이 안전합니다.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">🚫</div>
+          <h3>회원가입 & 로그인 ZERO</h3>
+          <p>이메일 인증, 비밀번호 기억, 계정 생성이 전혀 필요 없습니다. 앱을 켜면 즉시 사용 준비가 완료됩니다.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">📡</div>
+          <h3>자동 검색 & 수동 IP 지원</h3>
+          <p>Bonjour/mDNS 프로토콜로 같은 네트워크 기기를 자동으로 찾아주며, 학교나 공공 Wi-Fi처럼 브로드캐스트가 차단된 환경에서도 IP 직접 입력으로 전송할 수 있습니다.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">🛡️</div>
+          <h3>안전한 사전 수신 승인</h3>
+          <p>수신자에게 보낸 사람, 파일 이름, 전체 용량을 먼저 확인받고 [수락/거절]을 거치므로 악성 파일이나 원치 않는 파일의 자동 수신을 철저히 차단합니다.</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon-wrapper">📊</div>
+          <h3>실시간 진행률 & 속도 모니터링</h3>
+          <p>현재 전송 속도(MB/s), 남은 예상 시간, 전송 진행률(%)이 양쪽 화면에서 실시간으로 동기화되어 전송 상황을 한눈에 파악할 수 있습니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- How It Works Section -->
+  <section id="how-it-works" class="section" style="background: var(--bg-secondary);">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">How It Works</span>
+        <h2 class="section-title">단 3단계로 끝나는 전송</h2>
+        <p class="section-desc">복잡한 페어링이나 코드 입력 없이 가장 직관적인 흐름을 제공합니다.</p>
+      </div>
+
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-number">1</div>
+          <h3>같은 네트워크 연결</h3>
+          <p>보내는 기기와 받는 기기를 동일한 공유기(Wi-Fi 또는 유선 LAN)에 연결하고 LanShare 앱을 실행합니다.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">2</div>
+          <h3>파일 선택 & 대상 선택</h3>
+          <p>전송할 파일을 드래그하여 앱에 올리고, 자동으로 검색된 주변 기기 목록에서 대상 기기를 터치합니다.</p>
+        </div>
+
+        <div class="step-card">
+          <div class="step-number">3</div>
+          <h3>수신 승인 즉시 전송 완료</h3>
+          <p>받는 기기 화면에 뜨는 알림창에서 [수락]을 누르면 즉시 초고속으로 전송되어 다운로드 폴더에 안전하게 저장됩니다.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Web Simulator -->
+  <section id="simulator" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Interactive Preview</span>
+        <h2 class="section-title">웹에서 직접 체험해보세요</h2>
+        <p class="section-desc">LanShare의 초고속 P2P 전송과 승인 프로세스를 브라우저에서 인터랙티브하게 시뮬레이션해볼 수 있습니다.</p>
+      </div>
+
+      <div class="simulator-box">
+        <!-- Devices Nodes -->
+        <div class="sim-devices">
+          <div class="sim-device-node active">
+            <div class="sim-device-icon">💻</div>
+            <div class="sim-device-name">My MacBook Pro</div>
+            <div class="sim-device-ip">192.168.1.100 (송신 기기)</div>
+          </div>
+
+          <div class="sim-transfer-channel">
+            <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">5GHz Wi-Fi LAN Stream</div>
+            <div class="channel-line">
+              <div id="sim-packet" class="channel-packet"></div>
+            </div>
+            <div id="sim-status-label" style="font-size: 0.85rem; color: var(--text-muted); min-height: 24px;">대기 중: 파일을 올리거나 전송을 시작하세요</div>
+          </div>
+
+          <div class="sim-device-node">
+            <div class="sim-device-icon">📱</div>
+            <div id="target-device-name" class="sim-device-name">Galaxy S24 Ultra</div>
+            <div class="sim-device-ip">192.168.1.142 (수신 기기)</div>
+            <div style="margin-top: 10px;">
+              <select id="sim-target-device" style="background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 4px 8px; font-size: 0.75rem; width: 100%;">
+                <option value="Galaxy S24 Ultra">Galaxy S24 Ultra (Android)</option>
+                <option value="Windows Gaming PC">Windows Gaming PC (.NET 8)</option>
+                <option value="iPad Pro 13">iPad Pro 13 (iOS)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Drag & Drop Zone -->
+        <div id="sim-drop-area" class="drop-area">
+          <div class="drop-icon">📂</div>
+          <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px;">컴퓨터의 파일을 여기로 끌어다 놓거나 클릭하세요</div>
+          <div id="sim-file-info" style="font-size: 0.85rem; color: var(--text-secondary);">
+            기본 테스트 파일: <strong>Sample_Design_4K.mov</strong> (342.0 MB)
+          </div>
+          <input type="file" id="sim-file-input" style="display: none;">
+        </div>
+
+        <!-- Progress Metrics -->
+        <div class="progress-container">
+          <div class="progress-header">
+            <span>전송 진행 상태</span>
+            <span id="sim-progress-percent">0%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div id="sim-progress-bar" class="progress-bar-fill"></div>
+          </div>
+          <div class="progress-metrics">
+            <span id="sim-progress-transferred">0 MB / 342.0 MB</span>
+            <span id="sim-progress-speed">0 MB/s</span>
+          </div>
+        </div>
+
+        <!-- Action Controls -->
+        <div style="display: flex; justify-content: center; gap: 14px; margin-top: 24px;">
+          <button id="sim-start-btn" class="btn btn-primary btn-lg">전송 시작 (시뮬레이션)</button>
+          <button id="sim-reset-btn" class="btn btn-secondary btn-lg" style="display: none;">초기화</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Platforms & Download Section -->
+  <section id="platforms" class="section" style="background: var(--bg-secondary);">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Supported Platforms</span>
+        <h2 class="section-title">모든 운영체제에서 만나는 LanShare</h2>
+        <p class="section-desc">동일한 v1 네트워크 전송 프로토콜을 구현하여 이기종 기기 간 원활한 파일 교환이 가능합니다.</p>
+      </div>
+
+      <!-- Platform Tabs Navigation -->
+      <div class="platforms-tabs-nav">
+        <button id="tab-macos" class="tab-btn active" data-target="platform-macos">
+          <span>🍏</span> macOS
+        </button>
+        <button id="tab-android" class="tab-btn" data-target="platform-android">
+          <span>🤖</span> Android
+        </button>
+        <button id="tab-windows" class="tab-btn" data-target="platform-windows">
+          <span>🪟</span> Windows
+        </button>
+        <button id="tab-ios" class="tab-btn" data-target="platform-ios">
+          <span>📱</span> iOS / iPadOS
+        </button>
+      </div>
+
+      <!-- Tab 1: macOS -->
+      <div id="platform-macos" class="platform-content active">
+        <div class="platform-detail-header">
+          <div class="platform-meta">
+            <h3>macOS 네이티브 앱</h3>
+            <p>Swift & SwiftUI로 작성된 고성능 네이티브 클라이언트 · Apple Silicon 및 Intel Mac 완벽 지원</p>
+          </div>
+          <a href="downloads/LanShare-macOS.zip" class="btn btn-primary" download>
+            <span>⬇️</span> LanShare.app 다운로드 (.zip)
+          </a>
+        </div>
+
+        <div style="font-size: 0.95rem; margin-bottom: 12px; font-weight: 600;">터미널에서 즉시 실행 또는 빌드하기:</div>
+        <div class="code-snippet">
+          <button class="copy-btn">복사</button>
+          <code># 저장소 루트에서 즉시 실행
+swift run
+
+# 또는 독립 실행형 .app 번들 빌드
+bash scripts/build-app.sh
+open dist/LanShare.app</code>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 10px;">
+          💡 최초 실행 시 로컬 네트워크 검색 권한을 허용해주세요. 수신된 파일은 기본적으로 '다운로드' 폴더에 저장됩니다.
+        </p>
+      </div>
+
+      <!-- Tab 2: Android -->
+      <div id="platform-android" class="platform-content">
+        <div class="platform-detail-header">
+          <div class="platform-meta">
+            <h3>Android 앱</h3>
+            <p>Kotlin & Jetpack Compose 기반 모던 UI · Android 8.0 (API 26) 이상 호환</p>
+          </div>
+          <a href="#faq" class="btn btn-secondary">
+            <span>📖</span> Android 빌드 안내
+          </a>
+        </div>
+
+        <div style="font-size: 0.95rem; margin-bottom: 12px; font-weight: 600;">Android Studio 또는 Gradle 빌드:</div>
+        <div class="code-snippet">
+          <button class="copy-btn">복사</button>
+          <code>cd Android
+./gradlew assembleDebug
+
+# 빌드된 APK 설치 (adb 연결 기기)
+./gradlew installDebug</code>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 10px;">
+          💡 Android의 NsdManager(mDNS)를 통해 같은 Wi-Fi의 Mac/PC를 즉시 검색합니다.
+        </p>
+      </div>
+
+      <!-- Tab 3: Windows -->
+      <div id="platform-windows" class="platform-content">
+        <div class="platform-detail-header">
+          <div class="platform-meta">
+            <h3>Windows 데스크톱 앱</h3>
+            <p>.NET 8 WPF 기반 · Windows 10 / 11 64-bit 지원</p>
+          </div>
+          <a href="#faq" class="btn btn-secondary">
+            <span>⚙️</span> Windows 빌드 안내
+          </a>
+        </div>
+
+        <div style="font-size: 0.95rem; margin-bottom: 12px; font-weight: 600;">.NET SDK를 통한 빌드 및 실행:</div>
+        <div class="code-snippet">
+          <button class="copy-btn">복사</button>
+          <code>cd Windows/LanShare.Windows
+dotnet build -c Release
+dotnet run -c Release</code>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 10px;">
+          💡 Windows Defender 방화벽 팝업 시 '개인 네트워크' 접근 허용을 선택해야 기기 검색 및 TCP 파일 수신이 동작합니다.
+        </p>
+      </div>
+
+      <!-- Tab 4: iOS / iPadOS -->
+      <div id="platform-ios" class="platform-content">
+        <div class="platform-detail-header">
+          <div class="platform-meta">
+            <h3>iOS / iPadOS 앱</h3>
+            <p>SwiftUI 기반 클라이언트 · iOS 16 이상 지원</p>
+          </div>
+          <a href="#faq" class="btn btn-secondary">
+            <span>📱</span> Xcode 프로젝트 열기
+          </a>
+        </div>
+
+        <div style="font-size: 0.95rem; margin-bottom: 12px; font-weight: 600;">Xcode에서 프로젝트 열람 및 설치:</div>
+        <div class="code-snippet">
+          <button class="copy-btn">복사</button>
+          <code># Mac 환경에서 Xcode 프로젝트 열기
+open iOS/LanShareIOS.xcodeproj</code>
+        </div>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 10px;">
+          💡 iOS 운영체제 정책상 백그라운드 소켓 수신이 제한되므로, 파일 전송 중에는 앱을 화면 전면에 열어두어야 합니다.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Comparison Table Section -->
+  <section id="comparison" class="section">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Comparison</span>
+        <h2 class="section-title">기존 전송 방식과의 비교</h2>
+        <p class="section-desc">로컬 네트워크 다이렉트 전송이 왜 가장 쾌적한지 확인해보세요.</p>
+      </div>
+
+      <div class="comparison-table-wrapper">
+        <table class="comparison-table">
+          <thead>
+            <tr>
+              <th>기능 항목</th>
+              <th class="highlight">LanShare (로컬 전송)</th>
+              <th>클라우드 드라이브 (G드라이브 등)</th>
+              <th>메신저 / 카카오톡</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>전송 경로</strong></td>
+              <td class="highlight">기기간 1:1 직결 (LAN)</td>
+              <td>인터넷 서버 업로드 후 다운로드</td>
+              <td>메신저 중앙 서버 경유</td>
+            </tr>
+            <tr>
+              <td><strong>전송 속도</strong></td>
+              <td class="highlight">최대 1Gbps+ (공유기 최고 대역폭)</td>
+              <td>인터넷 업로드/다운로드 속도에 의존</td>
+              <td>서버 업로드 대역폭 제한</td>
+            </tr>
+            <tr>
+              <td><strong>파일 크기 한도</strong></td>
+              <td class="highlight">무제한 (디스크 용량 한도)</td>
+              <td>계정 스토리지 용량 제한 (15GB 등)</td>
+              <td>보통 300MB ~ 1GB 제한</td>
+            </tr>
+            <tr>
+              <td><strong>개인정보 / 서버 저장</strong></td>
+              <td class="highlight">외부 서버 저장 절대 없음</td>
+              <td>외부 데이터센터에 영구 보관</td>
+              <td>서버에 일정 기간 보관</td>
+            </tr>
+            <tr>
+              <td><strong>회원가입 / 로그인</strong></td>
+              <td class="highlight">불필요 (앱 켜면 즉시 사용)</td>
+              <td>필수 계정 로그인</td>
+              <td>필수 친구 추가 및 로그인</td>
+            </tr>
+            <tr>
+              <td><strong>인터넷 데이터 요금</strong></td>
+              <td class="highlight">0원 (오프라인 Wi-Fi에서도 동작)</td>
+              <td>업로드/다운로드 2배 소모</td>
+              <td>모바일 데이터 소모</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section id="faq" class="section" style="background: var(--bg-secondary);">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-tag">Frequently Asked Questions</span>
+        <h2 class="section-title">자주 묻는 질문</h2>
+        <p class="section-desc">LanShare 사용과 네트워크 연결에 관한 궁금증을 해결해드립니다.</p>
+      </div>
+
+      <div class="faq-list">
+        <div class="faq-item open">
+          <div class="faq-question">
+            <span>인터넷 연결이 없는 오프라인 환경에서도 작동하나요?</span>
+            <span class="faq-icon">▼</span>
+          </div>
+          <div class="faq-answer">
+            네! 외부 인터넷망 연결이 차단된 폐쇄망 공유기나 핫스팟 환경에서도 같은 무선/유선 네트워크에 연결되어 있다면 문제없이 고속 전송이 가능합니다.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>기기 목록에 상대방 기기가 자동으로 뜨지 않아요.</span>
+            <span class="faq-icon">▼</span>
+          </div>
+          <div class="faq-answer">
+            일부 공공 Wi-Fi나 기업 네트워크에서는 보안을 위해 'AP 격리(Client Isolation)'가 활성화되어 mDNS 브로드캐스트가 차단될 수 있습니다. 이 경우 앱의 '수동 IP 연결' 기능을 이용해 상대 기기의 IP 주소를 직접 입력하여 즉시 연결할 수 있습니다.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>전송 프로토콜 규격은 어디서 확인할 수 있나요?</span>
+            <span class="faq-icon">▼</span>
+          </div>
+          <div class="faq-answer">
+            저장소의 <code>docs/PROTOCOL.md</code> 파일에 mDNS 서비스 레코드(<code>_lanshare._tcp</code>), TCP 핸드셰이크(발견·승인·헤더 규약) 및 바이너리 스트리밍 포맷이 투명하게 명세되어 있습니다. 누구나 자신만의 클라이언트를 구현할 수 있습니다.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>받은 파일은 어디에 저장되나요?</span>
+            <span class="faq-icon">▼</span>
+          </div>
+          <div class="faq-answer">
+            macOS와 Windows에서는 사용자의 '다운로드(Downloads)' 폴더에 자동으로 안전하게 저장되며, 수신자가 승인을 마친 후에만 기록을 시작합니다.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-question">
+            <span>전송 중 파일이 암호화되나요?</span>
+            <span class="faq-icon">▼</span>
+          </div>
+          <div class="faq-answer">
+            현재 구현된 v1 개발 규약은 로컬 사설망 직접 전송에 초점을 맞춘 초안 프로토콜입니다. 따라서 신뢰할 수 있는 개인 가정이나 사내 내부망에서 사용하시길 권장하며, 추후 릴리스에서 TLS 세션 암호화와 기기 간 지문 검증이 추가될 예정입니다.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="brand">
+            <img src="assets/logo.png" alt="LanShare Logo" class="brand-icon">
+            <span>LanShare</span>
+          </div>
+          <p>
+            같은 로컬 네트워크의 기기끼리 다이렉트로 파일을 주고받는 가장 빠르고 간결한 오픈 솔루션.
+          </p>
+        </div>
+
+        <div class="footer-links-group">
+          <h4>바로가기</h4>
+          <ul>
+            <li><a href="#features">주요 기능</a></li>
+            <li><a href="#simulator">라이브 체험</a></li>
+            <li><a href="#platforms">다운로드 센터</a></li>
+            <li><a href="#comparison">전송 방식 비교</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-links-group">
+          <h4>문서 & 프로토콜</h4>
+          <ul>
+            <li><a href="../docs/PROJECT_GUIDE.md" target="_blank">제품 및 기술 가이드</a></li>
+            <li><a href="../docs/PROTOCOL.md" target="_blank">전송 프로토콜 초안 (v1)</a></li>
+            <li><a href="../README.md" target="_blank">저장소 README</a></li>
+          </ul>
+        </div>
+
+        <div class="footer-links-group">
+          <h4>플랫폼 소스</h4>
+          <ul>
+            <li><a href="../Sources/">macOS Swift</a></li>
+            <li><a href="../Android/">Android Kotlin</a></li>
+            <li><a href="../Windows/">Windows .NET 8</a></li>
+            <li><a href="../iOS/">iOS Xcode</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="footer-bottom">
+        <div>© 2026 LanShare Project. All rights reserved. Free & Open Local Transfer.</div>
+        <div>
+          Designed for seamless peer-to-peer productivity.
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="app.js"></script>
+</body>
+</html>

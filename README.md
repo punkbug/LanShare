@@ -4,6 +4,7 @@
 
 ## 시작하기
 
+- [웹페이지 (홍보 및 배포)](web/README.md): 제품 소개, 실시간 시뮬레이터, 플랫폼별 다운로드 웹페이지 (`open web/index.html`)
 - [제품 및 기술 가이드](docs/PROJECT_GUIDE.md): 제품 목표, MVP 범위, 아키텍처, 보안, 배포 원칙
 - [Codex 작업 프롬프트](docs/CODEX_PROMPT.md): Codex에 전달할 구현 지침
 - [전송 프로토콜 초안](docs/PROTOCOL.md): 현재 플랫폼 간 개발용 wire protocol과 한계
