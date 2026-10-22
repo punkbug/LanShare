@@ -48,7 +48,6 @@
         <button id="theme-toggle" class="theme-toggle-btn" aria-label="테마 전환" title="다크/라이트 모드 전환">☀️</button>
         <a href="#web-direct-transfer" class="btn btn-primary btn-sm">지금 전송하기</a>
       </div>
-      </div>
     </div>
   </nav>
 
@@ -71,18 +70,18 @@
       </p>
 
       <div class="hero-cta">
-        <a id="hero-download-btn" href="downloads/LanShare-macOS.dmg" class="btn btn-primary btn-lg" download>
-          macOS 다운로드 (.dmg)
+        <a href="#web-direct-transfer" class="btn btn-primary btn-lg" style="background: var(--accent-gradient); box-shadow: 0 4px 25px var(--accent-glow);">
+          ⚡ 웹에서 지금 바로 전송 (무설치)
         </a>
-        <a href="#simulator" class="btn btn-secondary btn-lg">
-          웹에서 시뮬레이션 체험하기
+        <a id="hero-download-btn" href="downloads/LanShare-macOS.dmg" class="btn btn-secondary btn-lg" download>
+          macOS 앱 다운로드 (.dmg)
         </a>
       </div>
-      <div id="hero-os-hint" class="hero-os-hint" style="margin-bottom: 16px;">macOS 13+ (Ventura, Sonoma, Sequoia) 지원</div>
+      <div id="hero-os-hint" class="hero-os-hint" style="margin-bottom: 24px;">macOS 13+ 지원 · 브라우저만으로도 즉시 전송 가능</div>
 
       <!-- Quick Platform Download Chips -->
-      <div style="display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 30px;">
-        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">빠른 다운로드:</span>
+      <div style="display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px;">
+        <span style="font-size: 0.85rem; color: var(--text-muted); font-weight: 600;">앱 다운로드:</span>
         <a href="downloads/LanShare-Android.apk" download style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: var(--radius-full); background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.3); color: var(--text-primary); text-decoration: none; font-size: 0.82rem; font-weight: 600;">
           <span>🤖</span> Android (.apk)
         </a>
@@ -95,74 +94,6 @@
         <a href="downloads/LanShare-Windows-Setup.zip" download style="display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: var(--radius-full); background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); color: var(--text-primary); text-decoration: none; font-size: 0.82rem; font-weight: 600;">
           <span>🪟</span> Windows (.zip)
         </a>
-      </div>
-
-      <!-- App Mockup Preview -->
-      <div class="hero-mockup-wrapper">
-        <div class="app-window-frame">
-          <div class="window-header">
-            <div class="window-controls">
-              <span class="win-dot red"></span>
-              <span class="win-dot yellow"></span>
-              <span class="win-dot green"></span>
-            </div>
-            <div class="window-title">LanShare — 로컬 네트워크 전송</div>
-          </div>
-          <div class="window-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px;">
-            <!-- Left Panel: Peer Discovery Mockup -->
-            <div style="background: var(--bg-secondary); border-radius: var(--radius-md); padding: 18px; border: 1px solid var(--border-color);">
-              <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; display: flex; justify-content: space-between;">
-                <span>발견된 기기 (Bonjour / mDNS)</span>
-                <span style="color: var(--accent-primary);">● 2대 온라인</span>
-              </div>
-              <div style="display: flex; flex-direction: column; gap: 8px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: rgba(56, 189, 248, 0.12); border: 1px solid var(--accent-primary); border-radius: var(--radius-sm);">
-                  <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 1.3rem;">📱</span>
-                    <div>
-                      <div style="font-weight: 600; font-size: 0.9rem;">Galaxy S24 (Android)</div>
-                      <div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);">192.168.1.142:52520</div>
-                    </div>
-                  </div>
-                  <span style="font-size: 0.75rem; background: var(--accent-primary); color: #fff; padding: 2px 8px; border-radius: 99px;">선택됨</span>
-                </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
-                  <div style="display: flex; align-items: center; gap: 10px;">
-                    <span style="font-size: 1.3rem;">💻</span>
-                    <div>
-                      <div style="font-weight: 600; font-size: 0.9rem;">Office-PC (Windows 11)</div>
-                      <div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);">192.168.1.189:52520</div>
-                    </div>
-                  </div>
-                  <span style="font-size: 0.75rem; color: var(--text-muted);">대기 중</span>
-                </div>
-              </div>
-            </div>
-
-            <!-- Right Panel: Transfer Progress Mockup -->
-            <div style="background: var(--bg-secondary); border-radius: var(--radius-md); padding: 18px; border: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: space-between;">
-              <div>
-                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                  <span style="font-weight: 600; font-size: 0.95rem;">🎬 Project_Launch_4K.mov</span>
-                  <span style="font-size: 0.8rem; color: var(--accent-primary); font-weight: 700;">89.4 MB/s</span>
-                </div>
-                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px;">
-                  1.42 GB / 2.05 GB (약 7초 남음)
-                </div>
-                <div style="height: 8px; background: rgba(255, 255, 255, 0.1); border-radius: 4px; overflow: hidden; margin-bottom: 12px;">
-                  <div style="height: 100%; width: 68%; background: var(--accent-gradient); border-radius: 4px;"></div>
-                </div>
-              </div>
-
-              <div style="display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 14px;">
-                <span style="font-size: 0.8rem; color: var(--success); display: flex; align-items: center; gap: 4px;">
-                  ✓ 수신자 수락 확인됨
-                </span>
-                <button class="btn btn-secondary btn-sm" style="font-size: 0.75rem; padding: 4px 10px;" disabled>전송 중…</button>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   </header>
@@ -370,80 +301,6 @@
           <div class="step-number">3</div>
           <h3>수신 승인 즉시 전송 완료</h3>
           <p>받는 기기 화면에 뜨는 알림창에서 [수락]을 누르면 즉시 초고속으로 전송되어 다운로드 폴더에 안전하게 저장됩니다.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- Interactive Web Simulator -->
-  <section id="simulator" class="section">
-    <div class="container">
-      <div class="section-header">
-        <span class="section-tag">Interactive Preview</span>
-        <h2 class="section-title">웹에서 직접 체험해보세요</h2>
-        <p class="section-desc">LanShare의 초고속 P2P 전송과 승인 프로세스를 브라우저에서 인터랙티브하게 시뮬레이션해볼 수 있습니다.</p>
-      </div>
-
-      <div class="simulator-box">
-        <!-- Devices Nodes -->
-        <div class="sim-devices">
-          <div class="sim-device-node active">
-            <div class="sim-device-icon">💻</div>
-            <div class="sim-device-name">My MacBook Pro</div>
-            <div class="sim-device-ip">192.168.1.100 (송신 기기)</div>
-          </div>
-
-          <div class="sim-transfer-channel">
-            <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">5GHz Wi-Fi LAN Stream</div>
-            <div class="channel-line">
-              <div id="sim-packet" class="channel-packet"></div>
-            </div>
-            <div id="sim-status-label" style="font-size: 0.85rem; color: var(--text-muted); min-height: 24px;">대기 중: 파일을 올리거나 전송을 시작하세요</div>
-          </div>
-
-          <div class="sim-device-node">
-            <div class="sim-device-icon">📱</div>
-            <div id="target-device-name" class="sim-device-name">Galaxy S24 Ultra</div>
-            <div class="sim-device-ip">192.168.1.142 (수신 기기)</div>
-            <div style="margin-top: 10px;">
-              <select id="sim-target-device" style="background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 4px 8px; font-size: 0.75rem; width: 100%;">
-                <option value="Galaxy S24 Ultra">Galaxy S24 Ultra (Android)</option>
-                <option value="Windows Gaming PC">Windows Gaming PC (.NET 8)</option>
-                <option value="iPad Pro 13">iPad Pro 13 (iOS)</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- Drag & Drop Zone -->
-        <div id="sim-drop-area" class="drop-area">
-          <div class="drop-icon">📂</div>
-          <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px;">컴퓨터의 파일을 여기로 끌어다 놓거나 클릭하세요</div>
-          <div id="sim-file-info" style="font-size: 0.85rem; color: var(--text-secondary);">
-            기본 테스트 파일: <strong>Sample_Design_4K.mov</strong> (342.0 MB)
-          </div>
-          <input type="file" id="sim-file-input" style="display: none;">
-        </div>
-
-        <!-- Progress Metrics -->
-        <div class="progress-container">
-          <div class="progress-header">
-            <span>전송 진행 상태</span>
-            <span id="sim-progress-percent">0%</span>
-          </div>
-          <div class="progress-bar-bg">
-            <div id="sim-progress-bar" class="progress-bar-fill"></div>
-          </div>
-          <div class="progress-metrics">
-            <span id="sim-progress-transferred">0 MB / 342.0 MB</span>
-            <span id="sim-progress-speed">0 MB/s</span>
-          </div>
-        </div>
-
-        <!-- Action Controls -->
-        <div style="display: flex; justify-content: center; gap: 14px; margin-top: 24px;">
-          <button id="sim-start-btn" class="btn btn-primary btn-lg">전송 시작 (시뮬레이션)</button>
-          <button id="sim-reset-btn" class="btn btn-secondary btn-lg" style="display: none;">초기화</button>
         </div>
       </div>
     </div>

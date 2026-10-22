@@ -1000,7 +1000,22 @@ body {
   display: flex;
   gap: 12px;
   max-width: 420px;
+  width: 100%;
   margin: 0 auto;
+}
+
+@media (max-width: 520px) {
+  .code-input-group {
+    flex-direction: column;
+  }
+  .code-input-group .btn {
+    width: 100%;
+    padding: 14px 20px;
+  }
+  .code-input {
+    width: 100%;
+    font-size: 1.25rem;
+  }
 }
 
 .code-input {
