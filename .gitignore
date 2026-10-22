@@ -35,6 +35,10 @@ Windows/**/obj/
 *.exe
 *.msi
 
+# Allow release artifacts for web distribution
+!web/downloads/**
+!web/downloads/*
+
 # Signing material, credentials, and local environment files
 *.keystore
 *.jks
