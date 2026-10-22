@@ -3,6 +3,7 @@ package app.lanshare.android
 import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
+import android.app.Dialog
 import android.content.ContentValues
 import android.content.Intent
 import android.net.Uri
@@ -171,12 +172,35 @@ class MainActivity : Activity() {
     }
 
     private fun showWebTransferDialog() {
+        val pageStatus = TextView(this).apply {
+            text = "전송 화면을 불러오는 중…"
+            textSize = 14f
+            setTextColor(Color.rgb(70, 80, 100))
+            gravity = Gravity.CENTER
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+        }
         val webView = WebView(this).apply {
             settings.javaScriptEnabled = true
             settings.domStorageEnabled = true
             settings.mediaPlaybackRequiresUserGesture = false
             addJavascriptInterface(NativeDownloadBridge(), "lanShareNative")
-            webViewClient = WebViewClient()
+            setBackgroundColor(Color.WHITE)
+            webViewClient = object : WebViewClient() {
+                override fun onPageFinished(view: WebView, url: String) {
+                    pageStatus.visibility = View.GONE
+                }
+
+                override fun onReceivedError(
+                    view: WebView,
+                    request: android.webkit.WebResourceRequest,
+                    error: android.webkit.WebResourceError
+                ) {
+                    if (request.isForMainFrame) {
+                        pageStatus.text = "웹 전송 화면을 불러오지 못했습니다. 인터넷 연결을 확인하고 다시 열어주세요."
+                        pageStatus.visibility = View.VISIBLE
+                    }
+                }
+            }
             webChromeClient = object : WebChromeClient() {
                 override fun onShowFileChooser(view: WebView, callback: android.webkit.ValueCallback<Array<Uri>>, params: FileChooserParams): Boolean {
                     webFileCallback?.onReceiveValue(null)
@@ -199,16 +223,19 @@ class MainActivity : Activity() {
                 text = "닫기"
                 setOnClickListener { webFileCallback?.onReceiveValue(null); webFileCallback = null; webDialog?.dismiss() }
             }, matchWidth())
+            addView(pageStatus, matchWidth())
             addView(webView, LinearLayout.LayoutParams(matchWidth().width, 0, 1f))
         }
-        webDialog = AlertDialog.Builder(this).setView(layout).create().apply {
+        webDialog = Dialog(this).apply {
+            setContentView(layout)
             setOnDismissListener { webView.destroy(); webDialog = null }
             show()
             window?.setLayout(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.MATCH_PARENT)
         }
+        webView.post { webView.loadUrl(WEB_TRANSFER_URL) }
     }
 
-    private var webDialog: AlertDialog? = null
+    private var webDialog: Dialog? = null
 
     private inner class NativeDownloadBridge {
         @JavascriptInterface fun beginFile(name: String, mime: String, size: Long) = synchronized(webDownloadLock) {
